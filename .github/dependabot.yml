@@ -10,7 +10,9 @@ updates:
       # same version. A bump of the action alone would split the two, so both
       # move together, by hand.
       - dependency-name: DavidAnson/markdownlint-cli2-action
-  - package-ecosystem: pip
+  # The dev deps: a bump rewrites uv.lock, and pyproject.toml's pin where there
+  # is one, in the same PR, so CI's install from the lock stays current.
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
