@@ -1,0 +1,14 @@
+// The one markdownlint configuration: the rules, which files are linted and
+// which are not. The `lint` task in mise.toml and the `markdownlint` job in
+// .github/workflows/ci.yml both read it; neither names files of its own (the
+// action's default, `*.{md,markdown}`, adds no file the globs below miss).
+{
+  "config": {
+    "MD013": false
+  },
+  "globs": ["**/*.md"],
+  // .gitignore already names the trees that are not this repository's own
+  // text: the venvs, the tool caches and .claude.
+  "gitignore": true,
+  "ignores": ["CHANGELOG.md"]
+}

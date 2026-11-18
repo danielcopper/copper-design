@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "copper-design"
+version = "0.0.0"
+description = "copper, one design system for several apps: what the apps share as design tokens and artwork, and the generator that renders the tokens for each target."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = []
+
+[project.optional-dependencies]
+# Exact pins for the checkers, so CI and a local `mise run setup` judge with the
+# same release; Dependabot moves them.
+dev = ["pytest", "pytest-cov", "ruff==0.15.22", "basedpyright==1.40.2"]
+
+[tool.pytest.ini_options]
+# The repo root first on sys.path, so the tested tree's package is the one
+# imported, and every warning fails the run.
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["error"]
+
+[tool.setuptools.packages.find]
+include = ["copper_design*"]
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+include = ["copper_design", "tests"]
+exclude = [".venv", ".venv-oldest", "build", ".claude"]
+reportMissingModuleSource = "none"
+reportMissingImports = "warning"
+reportPrivateUsage = "error"
+reportRedeclaration = "none"
+reportUnusedParameter = "none"
+reportUnusedVariable = "warning"
+reportArgumentType = "error"
+reportUnnecessaryComparison = "error"
+reportUnnecessaryIsInstance = "error"
+reportMissingTypeArgument = "error"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = [".claude"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # bugbear: common pitfalls
+    "SIM",  # simplify: unnecessary complexity
+    "UP",   # pyupgrade: modern Python syntax
+    "RUF",  # ruff-specific rules
+    "ARG",  # unused arguments
+    "RET",  # flake8-return
+    "C4",   # flake8-comprehensions
+    "PIE",  # flake8-pie
+    "PERF", # perflint
+]

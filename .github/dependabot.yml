@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # The markdownlint job's action in .github/workflows/ci.yml bundles one
+      # markdownlint-cli2 version, and the `lint` task in mise.toml runs that
+      # same version. A bump of the action alone would split the two, so both
+      # move together, by hand.
+      - dependency-name: DavidAnson/markdownlint-cli2-action
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly

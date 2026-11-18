@@ -1,0 +1,50 @@
+[tools]
+python = "3.14"
+uv = "0.10.2"  # creates the venv and installs the package + dev deps
+deno = "2.9"   # minor pin: deno fmt is a formatter, and a version jump can reformat Markdown
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.setup]
+description = "Install the package (editable) and dev deps into the local venv"
+run = "uv pip install -e '.[dev]'"
+
+[tasks.test]
+description = "Run the tests"
+run = "python -m pytest tests -q"
+
+[tasks.lint]
+description = "ruff, basedpyright, Markdown format and Markdown lint"
+# markdownlint-cli2 runs through deno so the repo needs no Node toolchain; which
+# files it lints is in .markdownlint-cli2.jsonc. Bump it with the markdownlint
+# action in .github/workflows/ci.yml (.github/dependabot.yml says why).
+# `--no-lock` keeps deno from writing a deno.lock into the tree.
+run = [
+    "ruff check .",
+    "ruff format --check .",
+    "basedpyright",
+    "deno fmt --check",
+    "deno run --no-lock --allow-read --allow-env --allow-sys npm:markdownlint-cli2@0.24.0",
+]
+
+[tasks.gate]
+description = "Run test, then lint: the local gate (CLAUDE.md, Pipeline, says which CI checks it leaves out)"
+# One step after the other, never side by side.
+run = [{ task = "test" }, { task = "lint" }]
+
+[tasks.test-oldest]
+description = "Run the tests on the oldest supported interpreter (the floor `test` does not cover)"
+# By hand, not part of `test` or the gate: this one needs its own venv and, the first
+# time, an interpreter download. The floor comes from pyproject's requires-python
+# (">=X.Y" -> "X.Y") so the number is not repeated here. The venv is a separate
+# directory and the interpreter is called by its own path on purpose: .venv is the
+# activated one. --clear rebuilds that venv on every run, so no run inherits
+# leftovers from an earlier one.
+run = """
+floor=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["requires-python"].lstrip(">= "))')
+uv venv --clear --python "$floor" .venv-oldest
+uv pip install --python .venv-oldest -e '.[dev]'
+.venv-oldest/bin/python -V
+.venv-oldest/bin/python -m pytest tests -q
+"""

@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-oldest/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+coverage.xml
+
+# Packaging outputs
+build/
+dist/
+
+# Local working state: worktrees and maintainer notes
+.claude/

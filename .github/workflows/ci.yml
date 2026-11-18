@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.14"  # mise.toml's python
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        # From pyproject's requires-python floor to the interpreter mise.toml pins.
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the package and its dev deps
+        run: pip install -e '.[dev]'
+      - name: Run the tests
+        run: python -m pytest tests -q
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the package and its dev deps
+        run: pip install -e '.[dev]'
+      - name: ruff check
+        run: ruff check .
+      - name: ruff format
+        run: ruff format --check .
+      - name: Type-check (basedpyright)
+        run: basedpyright
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # Which files it lints is in .markdownlint-cli2.jsonc. Bump with
+      # markdownlint-cli2 in mise.toml's `lint` task (.github/dependabot.yml
+      # says why).
+      - uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25
+
+  markdown-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: "~2.9"  # mise.toml's deno
+      - name: Check Markdown formatting
+        run: deno fmt --check
+
+  # A fork's PR only: sonarcloud-fork-pr.yml reads the PR number from this
+  # artifact and checks it against the API.
+  pr-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Record the PR number
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir pr-metadata
+          echo "$PR_NUMBER" > pr-metadata/pr-number
+
+      - name: Upload PR metadata artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-metadata
+          path: pr-metadata/
+
+  # A fork's PR only: the coverage sonarcloud-fork-pr.yml hands the scanner,
+  # which executes nothing from the fork and so cannot run the suite itself.
+  # The same run the `sonarcloud` job makes for its own scan.
+  fork-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Produce Python coverage
+        run: |
+          pip install -e '.[dev]'
+          python -m pytest tests --cov=copper_design --cov-report=xml -q
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # Runs on every push to main and every pull request whose head is a branch of
+  # this repository, Dependabot's included: a Dependabot PR's run reads
+  # SONAR_TOKEN from the repository's Dependabot secrets rather than its Actions
+  # secrets, so the token is stored in both. A fork's run gets no secrets, so a
+  # fork's PR is skipped here and scanned by sonarcloud-fork-pr.yml once CI has
+  # succeeded, using the coverage from `fork-coverage` and the PR number in
+  # `pr-metadata`.
+  #
+  # A failed quality gate blocks the merge through `SonarCloud Code Analysis`,
+  # the SonarCloud app's own check, once main's ruleset requires it. The app
+  # posts it only once an analysis has run (this job's on a branch's PR,
+  # sonarcloud-fork-pr.yml's on a fork's), so a scan that never analysed leaves
+  # the required check unreported, which blocks as well.
+  sonarcloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Sonar needs full history to attribute new code to the right commits.
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Produce Python coverage
+        run: |
+          pip install -e '.[dev]'
+          python -m pytest tests --cov=copper_design --cov-report=xml -q
+      - name: SonarQube Cloud scan
+        uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
