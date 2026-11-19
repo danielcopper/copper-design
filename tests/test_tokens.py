@@ -325,6 +325,11 @@ _GOOD = _resolver(light=["t.json"], dark=["t.json"])
             _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": 1}]}}}},
             "context 'light' needs a list of token files",
         ),
+        (_GOOD | {"modifiers": {"mode": {"contexts": {"light": 5}}}}, "context 'light' needs a list of token files"),
+        (
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": "t.json", "type": "set"}]}}}},
+            "context 'light' needs a list of token files",
+        ),
         (_GOOD | {"modifiers": {"mode": {"contexts": {"light": []}}}}, "context 'light' lists no token files"),
         (_GOOD | {"resolutionOrder": []}, "resolutionOrder must be the one modifier, #/modifiers/mode"),
         (_GOOD | {"resolutionOrder": [{"$ref": "#/sets/s"}]}, "resolutionOrder must be the one modifier"),

@@ -328,8 +328,11 @@ def test_a_parameter_file_that_breaks_its_schema_is_refused(edit: Any, message: 
         palette.parse(raw)
 
 
-def test_an_unreadable_parameter_file_names_itself(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    (tmp_path / palette.PARAMETER_FILE).write_text("[neutral\n", encoding="utf-8")
+@pytest.mark.parametrize("content", [b"[neutral\n", b"# \xe9\n"])
+def test_an_unreadable_parameter_file_names_itself(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, content: bytes
+) -> None:
+    (tmp_path / palette.PARAMETER_FILE).write_bytes(content)
     monkeypatch.setattr(palette, "files", lambda _package: tmp_path)
     with pytest.raises(palette.ParameterError, match=r"^parameters\.toml: "):
         palette.load_parameters()
