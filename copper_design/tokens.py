@@ -14,13 +14,9 @@ files beside the resolver, and a resolution order that is that modifier. Token
 values are opaque colours in sRGB or curly-brace references.
 
 Everything it reads is checked, and anything it does not understand raises a
-TokenError naming the file or the token's path: a file that is no JSON object or
-holds a duplicate key, an unknown ``$`` property or one of the wrong type, an
-empty group, a name the ports cannot carry, a token and a group of one name,
-two paths that the ports would spell alike, a colour that is not opaque sRGB.
-Loading a mode also checks it whole: base colours, the neutral first, each with
-its main value (``$root``) and the steps 1-12; every role a reference to a
-palette step; and the roles exactly copper_design.contrast's KINDS.
+TokenError naming the file or the token's path, such as a duplicate key, a
+reference to no token, or a colour that is not opaque sRGB. Loading a mode also
+checks it whole, so that a port is never written from an incomplete one.
 """
 
 import json

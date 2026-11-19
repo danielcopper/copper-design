@@ -42,13 +42,14 @@ def context(mode_tokens: tokens.ModeTokens) -> dict[str, Any]:
 
 
 def _where_in_template(template: str, error: BaseException) -> str:
-    """Where in the template an error was raised: `` line N``, or `` (in <included> line N)``; nothing if unknown.
+    """Where in the template an error was raised: `` line N``, or `` (in <other> line N)``; nothing if unknown.
 
     A template's frames are its top-level code, its blocks and its macros. The
-    last one is where the error was raised; when it belongs to an included
-    template, that template is named. A loader without file names (such as
-    DictLoader) gives every template the same frame name, so there an included
-    template's line is reported under the outer template.
+    last one is where the error was raised; when it belongs to another template
+    (included, extended or imported), that template is named. A loader without
+    file names (such as DictLoader) gives every template the same file name
+    (``<template>``), so there another template's line is reported under the
+    outer template.
     """
     if isinstance(error, TemplateSyntaxError):
         return f" line {error.lineno}"
