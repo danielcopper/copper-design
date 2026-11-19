@@ -120,10 +120,18 @@ def _copper_colours() -> dict[str, dict[str, str]]:
     text = (_KOTLIN / "CopperColors.kt").read_text(encoding="utf-8")
     result: dict[str, dict[str, str]] = {}
     for mode in palette.MODES:
-        arguments = _arguments(_block(text, f"val {mode} =\n            CopperColors("))
-        assert len({name for name, _ in arguments}) == len(arguments), f"{mode}: a colour named twice"
+        body = re.search(
+            rf"^    private object {mode.capitalize()} : CopperColors\(\) \{{\n(.*?)^    \}}$", text, re.M | re.S
+        )
+        assert body, f"no object for {mode} mode"
+        overrides = []
+        for line in body[1].splitlines():
+            match = re.fullmatch(r"        override val (\w+) = (.+)", line)
+            assert match, f"{mode}: not one override per line: {line!r}"
+            overrides.append((match[1], match[2]))
+        assert len({name for name, _ in overrides}) == len(overrides), f"{mode}: a colour named twice"
         values: dict[str, str] = {}
-        for name, value in arguments:
+        for name, value in overrides:
             match = _KOTLIN_COLOUR.match(value)
             assert match, f"{mode}.{name}: {value} is no opaque Compose colour"
             values[name] = f"#{match[1].lower()}"
@@ -148,10 +156,16 @@ def test_the_kotlin_files_are_in_the_package_dev_cupr_design() -> None:
 
 def test_copper_colors_declares_every_colour_it_sets() -> None:
     text = (_KOTLIN / "CopperColors.kt").read_text(encoding="utf-8")
-    declared = re.findall(r"^    val (\w+): Color,$", _block(text, "class CopperColors("), re.MULTILINE)
+    declared = re.findall(r"^    abstract val (\w+): Color$", text, re.MULTILINE)
     assert len(declared) == len(set(declared))
     for mode, values in _copper_colours().items():
         assert list(values) == declared, mode
+
+
+def test_copper_colors_light_and_dark_are_the_modes_objects() -> None:
+    text = (_KOTLIN / "CopperColors.kt").read_text(encoding="utf-8")
+    companion = re.findall(r"^        val (\w+): CopperColors get\(\) = (\w+)$", text, re.MULTILINE)
+    assert companion == [(mode, mode.capitalize()) for mode in palette.MODES]
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
