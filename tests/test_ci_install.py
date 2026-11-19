@@ -2,7 +2,8 @@
 
 These tests pin mise.toml's `setup` command and its flags, that every install
 in the workflows and in mise.toml's tasks is that command, that each workflow
-job that runs Python tools installs with it, that CI runs mise.toml's uv, and
+job that runs Python tools (as `_PYTHON_TOOLS` names them) installs with it,
+that CI runs mise.toml's uv, and
 that the scan's sources hold the workflows and pyproject.toml apart from the
 tests. Why each flag is there is in mise.toml's `setup` task; why the scan reads
 those paths is in sonar-project.properties.
@@ -28,7 +29,7 @@ _INSTALLER = re.compile(
     r"\bpip[\d.]*\s+install\b|-m\s*pip\b|\buv\s+(?:pip|sync|add|run|tool)\b|\buvx\b|\bpipx\b|\bpoetry\b|\bpipenv\b"
     r"|\bpip-install\s*:"
 )
-# A job runs Python tools when it sets up uv or runs one of them.
+# A job runs Python tools when it sets up uv or runs `python -m`, pytest, ruff or basedpyright.
 _PYTHON_TOOLS = re.compile(r"astral-sh/setup-uv@|\bpython\s+-m\b|\bpytest\b|\bruff\s|\bbasedpyright\b")
 _JOB = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 _SETUP_UV = "astral-sh/setup-uv@"
