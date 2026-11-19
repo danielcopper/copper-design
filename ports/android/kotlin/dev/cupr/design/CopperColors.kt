@@ -6,8 +6,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
 /**
- * copper's colours in one mode: every named colour (a base colour's main value, its step 9, and its
- * steps 1-12) and every role. [light] and [dark] are the two modes.
+ * copper's colours in one mode: every named colour, a base colour's main value (its step 9) and its
+ * steps 1-12, and every role. [light] and [dark] are the two modes.
  */
 @Immutable
 sealed class CopperColors {

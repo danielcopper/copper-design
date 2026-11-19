@@ -138,7 +138,7 @@ def test_a_template_raising_anything_names_template_and_mode() -> None:
 def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _env_with("broken.json.j2", '{"background": {{ c["bg"] }}}')
     monkeypatch.setattr(render, "environment", lambda: env)
-    monkeypatch.setattr(render, "OUTPUTS", (("x-{mode}.json", "broken.json.j2"),))
+    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.json"), "broken.json.j2"),))
     with pytest.raises(render.RenderError, match=r"^x-light\.json \(broken\.json\.j2\) is no valid JSON"):
         render.outputs()
 
@@ -146,7 +146,7 @@ def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.Monk
 def test_an_xml_output_that_is_not_well_formed_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _env_with("broken.xml.j2", "<resources><color>{{ c['bg'] }}</resources>")
     monkeypatch.setattr(render, "environment", lambda: env)
-    monkeypatch.setattr(render, "OUTPUTS", (("x-{mode}.xml", "broken.xml.j2"),))
+    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.xml"), "broken.xml.j2"),))
     with pytest.raises(render.RenderError, match=r"^x-light\.xml \(broken\.xml\.j2\) is no well-formed XML"):
         render.outputs()
 
@@ -213,16 +213,15 @@ def test_the_json_templates_write_every_value_through_tojson() -> None:
         assert not loose, f"{template.name}: values not written through tojson: {loose}"
 
 
-def _colour_scheme(mode: palette.Mode) -> dict[str, str]:
-    colours: dict[palette.Mode, Mapping[str, str]] = {own: tokens.colours(own) for own in palette.MODES}
-    return material.scheme(mode, colours)
+def _colours_by_mode() -> dict[palette.Mode, Mapping[str, str]]:
+    return {mode: tokens.colours(mode) for mode in palette.MODES}
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_the_preview_shows_colour_blindness_views_of_the_hues_and_states(mode: palette.Mode) -> None:
     loaded = tokens.load(mode)
     herdr = json.loads(render.render(render.environment(), render.HERDR_TEMPLATE, loaded))
-    names = preview.mode_data(loaded, herdr, _colour_scheme(mode))["cvd"]["names"]
+    names = preview.mode_data(loaded, herdr, _colours_by_mode())["cvd"]["names"]
     hues = ["blue", "green", "teal", "yellow", "orange", "red", "violet"]
     assert names == [*hues, "success", "warning", "error", "info"]
 
@@ -234,14 +233,19 @@ def test_the_preview_shows_the_material3_scheme_in_light_and_dark(tmp_path: Path
     assert html.count("<h2>Material 3 colour scheme</h2>") == 2
     sections = html.split("copper, dark mode")
     assert len(sections) == 2
+    by_mode = _colours_by_mode()
+    sources = {}
     for mode, section in zip(palette.MODES, sections, strict=True):
-        scheme = _colour_scheme(mode)
+        scheme = material.scheme(mode, by_mode)
         swatches = re.findall(
             r'<span class="chip" style="background: (#[0-9a-f]{6});[^"]*"></span>\s*'
-            r'<div><div class="mono">(\w+)</div>',
+            r'<div><div class="mono">(\w+)</div><div class="mono"[^>]*>([^<]*)</div>',
             section,
         )
-        assert swatches == [(scheme[role], role) for role in material.ROLES], mode
+        assert [(hex_colour, role) for hex_colour, role, _ in swatches] == [
+            (scheme[role], role) for role in material.ROLES
+        ], mode
+        sources[mode] = {role: source for _, role, source in swatches}
         pairs = re.findall(
             r'class="m3-pair[^"]*" style="background: (#[0-9a-f]{6}); color: (#[0-9a-f]{6});'
             r'[^"]*">\s*<div>(\w+)</div>\s*<div class="mono">on (\w+): ([0-9.]+)</div>',
@@ -251,3 +255,12 @@ def test_the_preview_shows_the_material3_scheme_in_light_and_dark(tmp_path: Path
             (scheme[fill], scheme[text], text, fill, f"{contrast.ratio(scheme[text], scheme[fill]):.2f}")
             for text, fill in material.PAIRS
         ], mode
+    # A source is the copper name, after its mode where that is not the scheme's own.
+    light, dark = by_mode["light"], by_mode["dark"]
+    assert sources["light"]["primary"] == f"accent {light['accent']}"
+    assert sources["light"]["inversePrimary"] == f"dark: accent {dark['accent']}"
+    assert sources["light"]["primaryFixed"] == f"light: blue-3 {light['blue-3']}"
+    assert sources["dark"]["primary"] == f"accent {dark['accent']}"
+    assert sources["dark"]["inversePrimary"] == f"light: accent {light['accent']}"
+    assert sources["dark"]["primaryFixed"] == f"light: blue-3 {light['blue-3']}"
+    assert sources["dark"]["surfaceBright"] == f"neutral-6 {dark['neutral-6']}"

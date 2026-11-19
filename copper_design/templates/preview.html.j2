@@ -124,7 +124,7 @@
 
   {%- set md = m.material %}
   <h2>Material 3 colour scheme</h2>
-  <p class="note" style="color: {{ c['text-muted'] }}">The Android port's {{ m.mode }} scheme (material3 {{ md.version }}): each role with its copper source, then each colour with the text on it (needs {{ md.pairs[0].check.need }}).</p>
+  <p class="note" style="color: {{ c['text-muted'] }}">The Android port's {{ m.mode }} scheme (material3 {{ md.version }}): each role with its copper source, then each measured pair of a colour and the text drawn on it, the colour roles as text on the grounds included (needs {{ md.pairs[0].check.need }}).</p>
   <div class="m3-roles">
     {%- for role in md.roles %}
     <div class="m3-role"><span class="chip" style="background: {{ role.hex }}; outline: 1px solid {{ c['border'] }}"></span>

@@ -3,7 +3,7 @@
 import json
 import traceback
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -11,23 +11,39 @@ from jinja2 import Environment, PackageLoader, StrictUndefined, TemplateSyntaxEr
 
 from copper_design import material, palette, tokens
 
-HERDR_TEMPLATE = "herdr.json.j2"
-OUTPUTS = (
-    ("ports/herdr/copper-{mode}.json", HERDR_TEMPLATE),
-    ("ports/android/res/{android_values}/copper_colors.xml", "copper_colors.xml.j2"),
-    ("docs/swatch-{mode}.svg", "swatch.svg.j2"),
-)
-"""What `render` writes: a path below the output root and its template, once per mode."""
+type PerMode = Mapping[palette.Mode, str]
+"""A path below the output root for each mode."""
 
-KOTLIN = "ports/android/kotlin/dev/cupr/design"
-BOTH_MODES_OUTPUTS = (
-    (f"{KOTLIN}/CopperColors.kt", "CopperColors.kt.j2"),
-    (f"{KOTLIN}/CopperColorScheme.kt", "CopperColorScheme.kt.j2"),
-)
-"""What `render` writes once, from both modes' tokens: a path below the output root and its template."""
+
+def each_mode(pattern: str) -> PerMode:
+    """A path pattern with ``{mode}`` filled in for each mode."""
+    return {mode: pattern.format(mode=mode) for mode in palette.MODES}
+
 
 ANDROID_VALUES: dict[palette.Mode, str] = {"light": "values", "dark": "values-night"}
 """The Android resource directory of each mode: the system takes values-night in dark mode."""
+
+HERDR_TEMPLATE = "herdr.json.j2"
+OUTPUTS: tuple[tuple[PerMode, str], ...] = (
+    (each_mode("ports/herdr/copper-{mode}.json"), HERDR_TEMPLATE),
+    (
+        {mode: f"ports/android/res/{values}/copper_colors.xml" for mode, values in ANDROID_VALUES.items()},
+        "copper_colors.xml.j2",
+    ),
+    (each_mode("docs/swatch-{mode}.svg"), "swatch.svg.j2"),
+)
+"""What `render` writes once per mode: each mode's path below the output root, and the template."""
+
+type ExtraContext = Callable[[material.ColoursByMode], dict[str, Any]]
+"""What a template rendered for both modes gets beside the modes' contexts, from both modes' colours."""
+
+KOTLIN = "ports/android/kotlin/dev/cupr/design"
+BOTH_MODES_OUTPUTS: tuple[tuple[str, str, ExtraContext | None], ...] = (
+    (f"{KOTLIN}/CopperColors.kt", "CopperColors.kt.j2", None),
+    (f"{KOTLIN}/CopperColorScheme.kt", "CopperColorScheme.kt.j2", material.template_context),
+)
+"""What `render` writes once, from both modes' tokens: a path below the output root, the template and what else
+it gets."""
 
 
 class RenderError(ValueError):
@@ -40,7 +56,9 @@ def environment() -> Environment:
     Autoescaping is on for the HTML, SVG and XML templates and off for the
     JSON template, which writes every value through the ``tojson`` filter
     instead (tests/test_render.py holds it to that), and for the Kotlin
-    templates, which write only names and colours the filters below spell.
+    templates, which write only token names, modes, Material role names, the
+    material3 version and colours, none of them with a character Kotlin would
+    need escaped.
     """
     env = Environment(
         loader=PackageLoader("copper_design", "templates"),
@@ -88,15 +106,8 @@ def context(mode_tokens: tokens.ModeTokens) -> dict[str, Any]:
 
 
 def both_modes_context(by_mode: Mapping[palette.Mode, tokens.ModeTokens]) -> dict[str, Any]:
-    """What a template rendered once for both modes gets: per mode its context and its Material colour scheme's
-    sources (role, the mode its colour comes from, the copper name), and the material3 version."""
-    return {
-        "modes": [
-            context(by_mode[mode]) | {"material": [(role, *material.source(role, mode)) for role in material.ROLES]}
-            for mode in palette.MODES
-        ],
-        "material3": material.MATERIAL3,
-    }
+    """What every template rendered once for both modes gets: each mode's context, in palette.MODES's order."""
+    return {"modes": [context(by_mode[mode]) for mode in palette.MODES]}
 
 
 def _where_in_template(template: str, error: BaseException) -> str:
@@ -160,21 +171,21 @@ def _check_format(path: str, template: str, text: str) -> None:
 def outputs() -> dict[str, str]:
     """The ports and the README swatch rendered from the tokens, by path below the output root.
 
-    Each of OUTPUTS is rendered once per mode, each of BOTH_MODES_OUTPUTS once
-    with both modes' tokens. A JSON or XML output is parsed, so a template that
-    renders a broken one raises here.
+    A JSON or XML output is parsed, so a template that renders a broken one raises here.
     """
     env = environment()
     rendered: dict[str, str] = {}
     by_mode: dict[palette.Mode, tokens.ModeTokens] = {mode: tokens.load(mode) for mode in palette.MODES}
     for mode, mode_tokens in by_mode.items():
-        for pattern, template in OUTPUTS:
-            path = pattern.format(mode=mode, android_values=ANDROID_VALUES[mode])
+        for paths, template in OUTPUTS:
+            path = paths[mode]
             text = render(env, template, mode_tokens)
             _check_format(path, template, text)
             rendered[path] = text
-    for path, template in BOTH_MODES_OUTPUTS:
-        text = render_template(env, template, "both modes", **both_modes_context(by_mode))
+    colours: material.ColoursByMode = {mode: mode_tokens.colours for mode, mode_tokens in by_mode.items()}
+    for path, template, extra in BOTH_MODES_OUTPUTS:
+        values = both_modes_context(by_mode) | (extra(colours) if extra else {})
+        text = render_template(env, template, "both modes", **values)
         _check_format(path, template, text)
         rendered[path] = text
     return rendered
