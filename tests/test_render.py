@@ -128,8 +128,10 @@ def test_a_template_error_in_an_included_template_names_that_template(tmp_path: 
 
 def test_a_template_raising_anything_names_template_and_mode() -> None:
     env = _env_with("broken.svg.j2", "{{ 1 // 0 }}")
-    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 1 \(light\): ZeroDivisionError: division"):
+    # The error's type, not its text: the interpreter words the message (3.12 and 3.14 differ).
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 1 \(light\): ZeroDivisionError: ") as raised:
         render.render(env, "broken.svg.j2", tokens.load("light"))
+    assert isinstance(raised.value.__cause__, ZeroDivisionError)
 
 
 def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
