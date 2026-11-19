@@ -23,14 +23,17 @@ _HOME_VARIABLES = ("HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME",
 
 
 _AUDIT = HomeAudit(REAL_HOME, ())
-_TEMPORARY_HOME = Path(tempfile.mkdtemp(prefix="copper-design-home-"))
+_TEMPORARY_HOMES: list[Path] = []
 
 
 def pytest_configure() -> None:
-    for variable in _HOME_VARIABLES:
-        os.environ[variable] = str(_TEMPORARY_HOME / variable.lower())
+    # The roots are checked before anything is created, so a refused run leaves nothing behind.
     _AUDIT.allowed = allowed_roots()
     check_roots(REAL_HOME, _AUDIT.allowed)
+    home = Path(tempfile.mkdtemp(prefix="copper-design-home-"))
+    _TEMPORARY_HOMES.append(home)
+    for variable in _HOME_VARIABLES:
+        os.environ[variable] = str(home / variable.lower())
     sys.addaudithook(_AUDIT.hook)
 
 
@@ -41,7 +44,8 @@ _UNREMOVED: list[str] = []
 def pytest_sessionfinish(session: pytest.Session) -> None:
     # Last of all session-end hooks, so their accesses count too; anything later
     # (the terminal summary) is not counted.
-    shutil.rmtree(_TEMPORARY_HOME, onexc=lambda _function, path, error: _UNREMOVED.append(f"{path}: {error}"))
+    for home in _TEMPORARY_HOMES:
+        shutil.rmtree(home, onexc=lambda _function, path, error: _UNREMOVED.append(f"{path}: {error}"))
     if _AUDIT.touched:
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
 

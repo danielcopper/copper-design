@@ -146,9 +146,13 @@ def test_a_run_whose_import_path_holds_the_real_home_is_refused(
     _suite_copy(pytester)
     pytester.makepyfile(test_probe="def test_probe() -> None:\n    pass\n")
     monkeypatch.setenv("PYTHONPATH", "/")
+    temporary = pytester.path / "tmp"
+    temporary.mkdir()
+    monkeypatch.setenv("TMPDIR", str(temporary))
     result = pytester.runpytest_subprocess("-p", "no:cacheprovider")
     assert result.ret != pytest.ExitCode.OK
     assert "would allow all of the real home" in "\n".join(result.errlines + result.outlines)
+    assert not list(temporary.iterdir()), "the refused run left a temporary home behind"
 
 
 def test_an_access_in_another_plugins_session_end_still_fails_the_run(pytester: pytest.Pytester) -> None:
@@ -184,5 +188,7 @@ def test_a_temporary_home_that_cannot_be_removed_is_reported(pytester: pytest.Py
     finally:
         home = Path((pytester.path / "home.txt").read_text())
         (home / "locked").chmod(stat.S_IRWXU)
-        shutil.rmtree(home)
+        temporary_home = home.parent
+        assert temporary_home.name.startswith("copper-design-home-")
+        shutil.rmtree(temporary_home)
     assert any(line.startswith("could not remove the temporary home") for line in result.outlines), result.outlines
