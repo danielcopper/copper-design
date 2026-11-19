@@ -37,9 +37,9 @@ chroma = [0.084, 0.168, 0.280, 0.392, 0.504, 0.616, 0.770, 1.008, 1.00, 1.00, 0.
 lightness = [0.190, 0.225, 0.270, 0.310, 0.350, 0.400, 0.480, 0.640, 0.760, 0.795, 0.800, 0.920]
 chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.80, 0.35]
 
-# The hues: OKLCH hue and peak chroma, and per mode the steps whose lightness
-# leaves the shared curve (step = lightness). Blue leans to petrol and red to rose,
-# as in Rosé Pine. Teal sits between green and blue by hue and apart from blue by
+# The hues: OKLCH hue angle (degrees) and peak chroma, and per mode the steps
+# whose lightness leaves the shared curve (step = lightness). Blue leans to petrol
+# and red to rose, as in Rosé Pine. Teal sits between green and blue by hue and apart from blue by
 # lightness: its solid steps (9-10) are lighter, so the two never meet. Yellow and
 # orange lift their solid steps: yellow far enough to carry dark text, orange only
 # part of the way, so in light mode neither dark nor light text reaches 4.5:1 on
@@ -50,39 +50,39 @@ chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.
 # test_tokens, test_render), in GLOSSARY.md (Base colour) and in the README's swatch
 # description, and counted ("eight") in the README.
 [hue.blue]
-hue = 245
+angle = 245
 chroma = 0.112
 light = { 9 = 0.500, 10 = 0.460 }
 
 [hue.green]
-hue = 140
+angle = 140
 chroma = 0.087
 light = { 11 = 0.490 }
 
 [hue.teal]
-hue = 195
+angle = 195
 chroma = 0.081
 light = { 9 = 0.640, 10 = 0.600 }
 dark = { 9 = 0.840, 10 = 0.870 }
 
 [hue.yellow]
-hue = 73
+angle = 73
 chroma = 0.099
 light = { 9 = 0.800, 10 = 0.770, 11 = 0.600 }
 dark = { 9 = 0.845, 10 = 0.875 }
 
 [hue.orange]
-hue = 50
+angle = 50
 chroma = 0.102
 light = { 9 = 0.650, 10 = 0.610, 11 = 0.530 }
 dark = { 9 = 0.785, 10 = 0.815 }
 
 [hue.red]
-hue = 4
+angle = 4
 chroma = 0.115
 light = { 11 = 0.430 }
 
 [hue.violet]
-hue = 306
+angle = 306
 chroma = 0.124
 light = { 11 = 0.500 }

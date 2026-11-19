@@ -2,7 +2,7 @@
 
 Each base colour gets a scale of 12 steps per mode: the neutral from curves of
 its own, every hue from the shared lightness and chroma curves of its mode, its
-own hue and peak chroma, and the steps whose lightness it moves. Each step is
+own hue angle and peak chroma, and the steps whose lightness it moves. Each step is
 set in OKLCH and fitted into sRGB.
 
 The parameter file is checked as a whole before anything is computed: an
@@ -58,7 +58,8 @@ class Curve:
 
 @dataclass(frozen=True)
 class Hue:
-    hue: float
+    angle: float
+    """The OKLCH hue angle, in degrees."""
     chroma: float
     """The peak chroma, which the curve's shares scale."""
     lightness: Mapping[Mode, Mapping[int, float]]
@@ -141,9 +142,9 @@ def parse(raw: dict[str, Any]) -> Parameters:
         at = f"{where}: hue.{name}"
         if not _NAME.match(name) or name == NEUTRAL:
             raise ParameterError(f"{at}: a hue's name is lowercase letters and not {NEUTRAL!r}")
-        table = _table(spec, at, {"hue", "chroma", *MODES}, required={"hue", "chroma"})
+        table = _table(spec, at, {"angle", "chroma", *MODES}, required={"angle", "chroma"})
         hues[name] = Hue(
-            _number(table["hue"], f"{at}.hue", _HUE),
+            _number(table["angle"], f"{at}.angle", _HUE),
             _number(table["chroma"], f"{at}.chroma", _CHROMA),
             {mode: _steps(table[mode], f"{at}.{mode}") for mode in MODES if mode in table},
         )
@@ -179,7 +180,7 @@ def _hue(spec: Hue, curve: Curve, mode: Mode) -> Scale:
     for step, value in spec.lightness.get(mode, {}).items():
         lightness[step - 1] = value
     return [
-        fit_hex(step_lightness, spec.chroma * share, spec.hue)
+        fit_hex(step_lightness, spec.chroma * share, spec.angle)
         for step_lightness, share in zip(lightness, curve.chroma, strict=True)
     ]
 

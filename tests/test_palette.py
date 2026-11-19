@@ -310,7 +310,7 @@ def test_the_shipped_parameters_pass_their_schema() -> None:
         (lambda raw: raw["curve"].update(light=[]), "curve.light: needs a table"),
         (lambda raw: raw["hue"]["blue"].pop("chroma"), "hue.blue: missing ['chroma']"),
         (lambda raw: raw["hue"]["blue"].update(ligth={}), "hue.blue: unknown keys ['ligth']"),
-        (lambda raw: raw["hue"]["blue"].update(hue=-5), "hue.blue.hue: -5 is outside"),
+        (lambda raw: raw["hue"]["blue"].update(angle=-5), "hue.blue.angle: -5 is outside"),
         (lambda raw: raw["hue"]["blue"].update(chroma=0.5), "hue.blue.chroma: 0.5 is outside"),
         (lambda raw: raw["hue"]["blue"].update(light={"0": 0.5}), "hue.blue.light: unknown keys ['0']"),
         (lambda raw: raw["hue"]["blue"].update(light={"13": 0.5}), "hue.blue.light: unknown keys ['13']"),

@@ -32,9 +32,9 @@ the **parameter file**.
 
 ### Parameter file
 
-The source of the palette's values (`copper_design/parameters.toml`): per hue its OKLCH hue and peak chroma, per mode
-the lightness and chroma curves over the 12 steps, the neutral's own curves, and the steps a hue moves off the shared
-curve. The palette tokens are generated from it and never edited by hand.
+The source of the palette's values (`copper_design/parameters.toml`): per hue its OKLCH hue angle and peak chroma, per
+mode the lightness and chroma curves over the 12 steps, the neutral's own curves, and the steps a hue moves off the
+shared curve. The palette tokens are generated from it and never edited by hand.
 
 ### Base colour
 
