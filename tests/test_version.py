@@ -7,8 +7,8 @@ release-please-config.json, which finds the line by its
 ``x-release-please-version`` annotation). These tests make drift between pyproject.toml
 and ``__version__`` a red test, and a release PR runs them, so once main's ruleset
 requires the test checks, a release that bumps one spelling without the other
-cannot merge. The installed distribution's metadata is not compared: in an
-editable venv it lags the tree right after a version bump.
+cannot merge. No installed distribution's metadata is compared: the venv holds
+only the dev deps, not the project (mise.toml's `setup` task says why).
 """
 
 import json

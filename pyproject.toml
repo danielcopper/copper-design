@@ -13,8 +13,8 @@ license-files = ["LICENSE"]
 dependencies = []
 
 [project.optional-dependencies]
-# Exact pins for the checkers, so CI and a local `mise run setup` judge with the
-# same release; Dependabot moves them.
+# Exact pins for the checkers, so a checker release moves only through a reviewed
+# bump of this line; Dependabot proposes them.
 dev = ["pytest", "pytest-cov", "ruff==0.17.5", "basedpyright==1.40.2"]
 
 [tool.pytest.ini_options]

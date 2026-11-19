@@ -10,7 +10,10 @@ updates:
       # same version. A bump of the action alone would split the two, so both
       # move together, by hand.
       - dependency-name: DavidAnson/markdownlint-cli2-action
-  - package-ecosystem: pip
+  # The dev deps: a bump moves one direct dev dep in uv.lock, and its pin in
+  # pyproject.toml where there is one; an indirect dep moves only when such a
+  # bump re-resolves it.
+  - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
