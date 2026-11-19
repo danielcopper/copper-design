@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, PackageLoader
 
-from copper_design import contrast, material, palette, preview, render, tokens
+from copper_design import contrast, herdr, material, palette, preview, render, tokens
 from copper_design.__main__ import main
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -264,3 +264,18 @@ def test_the_preview_shows_the_material3_scheme_in_light_and_dark(tmp_path: Path
     assert sources["dark"]["inversePrimary"] == f"light: accent {light['accent']}"
     assert sources["dark"]["primaryFixed"] == f"light: blue-3 {light['blue-3']}"
     assert sources["dark"]["surfaceBright"] == f"neutral-6 {dark['neutral-6']}"
+
+
+def test_the_preview_draws_the_herdr_panels_as_herdr_derives_them(tmp_path: Path) -> None:
+    page = tmp_path / "copper.html"
+    main(["preview", str(page)])
+    sections = page.read_text(encoding="utf-8").split("copper, dark mode")
+    for mode, section in zip(palette.MODES, sections, strict=True):
+        section = section.split("<h2>herdr theme</h2>")[1].split("<h2>")[0]
+        theme = json.loads(render.outputs()[f"ports/herdr/copper-{mode}.json"])
+        resolved = herdr.resolve(theme)
+        assert f"background: {resolved['chrome']}; padding: 10px" in section, (
+            f"{mode}: the terminal is not on the chrome"
+        )
+        cards = re.findall(r'<div class="card" style="background: (#[0-9a-f]{6});[^"]*">\s*<div[^>]*>(\w+) ', section)
+        assert cards == [(resolved[surface], surface) for surface in herdr.SURFACES], mode

@@ -3,7 +3,8 @@ colour scheme, per mode.
 
 The page is for judging the look before a release; it is written to a path the
 caller names and not committed. The contrast checks are copper_design.contrast's
-and copper_design.material's.
+and copper_design.material's; the herdr panels are drawn as herdr resolves the
+theme (copper_design.herdr).
 """
 
 import json
@@ -13,6 +14,7 @@ from typing import Any
 from coloraide import Color
 
 from copper_design import contrast, material, palette, render, tokens
+from copper_design import herdr as herdr_colours
 
 CVD = ("protan", "deutan", "tritan")
 
@@ -50,6 +52,35 @@ def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[s
     return {"version": material.MATERIAL3, "roles": roles, "pairs": pairs}
 
 
+_HERDR_FILE_KEYS = ("background", "terminal_foreground", "selection", "cursor")
+"""herdr's names for what the theme file sets outside ``colors``."""
+
+
+def herdr_data(theme: Mapping[str, Any]) -> dict[str, Any]:
+    """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and the panel text's
+    contrast on each opaque surface herdr derives."""
+    resolved = herdr_colours.resolve(theme)
+    set_by_theme = {*_HERDR_FILE_KEYS, *theme.get("colors", {})}
+    return {
+        "version": herdr_colours.HERDR,
+        "resolved": resolved,
+        "colours": [
+            (key, hex_colour, "theme" if key in set_by_theme else "herdr") for key, hex_colour in resolved.items()
+        ],
+        "surfaces": [
+            {
+                "name": surface,
+                "hex": resolved[surface],
+                "texts": [
+                    (key, resolved[key], contrast.ratio(resolved[key], resolved[surface]))
+                    for key in ("foreground", "muted", "dim")
+                ],
+            }
+            for surface in herdr_colours.SURFACES
+        ],
+    }
+
+
 def mode_data(
     mode_tokens: tokens.ModeTokens, herdr: dict[str, Any], colours_by_mode: material.ColoursByMode
 ) -> dict[str, Any]:
@@ -82,6 +113,7 @@ def mode_data(
             + [(kind, [simulate(colours[name], kind) for name in named]) for kind in CVD],
         },
         "herdr": herdr,
+        "herdr_panels": herdr_data(herdr),
         "ansi": [(hex_colour, contrast.ratio(hex_colour, herdr["background"])) for hex_colour in herdr["ansi"]],
         "material": material_data(mode_tokens.mode, colours_by_mode),
     }
