@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=77"]
+# Exact pin: the package job in .github/workflows/ci.yml builds the wheel with
+# it, and tests/test_ci_install.py holds it pinned.
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]

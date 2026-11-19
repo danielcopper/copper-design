@@ -1,15 +1,15 @@
 [tools]
 python = "3.14"
-uv = "0.10.2"  # creates the venv, installs the dev deps from uv.lock; the uv CI installs too
+uv = "0.10.2"  # creates the venv, installs the locked deps from uv.lock; the uv CI installs and builds with too
 deno = "2.9"   # minor pin: deno fmt is a formatter, and a version jump can reformat Markdown
 
 [env]
 _.python.venv = { path = ".venv", create = true }
 
 [tasks.setup]
-description = "Install the locked dev deps into the local venv"
-# The same command as every install in .github/workflows/ci.yml, so local and CI
-# runs use the same versions. --locked fails when uv.lock is out of date with
+description = "Install the locked deps (runtime and dev) into the local venv, the project itself left out"
+# The same command as every install in .github/workflows/ci.yml but the package
+# job's (its comment says why), so local and CI runs use the same versions. --locked fails when uv.lock is out of date with
 # pyproject.toml (`mise run lock` rewrites it); --no-build takes wheels only, so
 # no package's build script runs; --extra dev is pyproject's `dev` extra, the
 # checkers and pytest. --no-install-project leaves out the project itself: it
@@ -27,7 +27,7 @@ run = "python -m pytest tests -q"
 
 [tasks.render]
 description = "Write the palette tokens from the parameter file, then the ports and the README swatch from the tokens"
-# From the tree, as the tests import it: the venv holds the dev deps, not the
+# From the tree, as the tests import it: the venv holds the locked deps, not the
 # project (`setup` says why). The tests hold the committed files equal to this output.
 run = ["python -m copper_design palette", "python -m copper_design render"]
 

@@ -1,18 +1,16 @@
-"""How CI installs the dev deps, and what the scan in CI reads.
+"""How CI installs the locked deps, and what the scan in CI reads.
 
 These tests pin mise.toml's `setup` command and its flags, that every install
-in the workflows and in mise.toml's tasks is that command, that each workflow
-job that runs Python tools (as `_PYTHON_TOOLS` names them) installs with it,
-that CI runs mise.toml's uv, and
+in the workflows but the `package` job's and every install in mise.toml's tasks
+is that command, that each other workflow job that runs Python tools (as
+`_PYTHON_TOOLS` names them) installs with it, that CI runs mise.toml's uv, and
 that the scan's sources hold the workflows and pyproject.toml apart from the
 tests. Why each flag is there is in mise.toml's `setup` task; why the scan reads
 those paths is in sonar-project.properties.
 
-One job is the exception: ci.yml's `package` installs the built wheel into a
-clean venv, as a consumer would, so `setup`'s command, which leaves the project
-out, cannot serve it. Its installs are pinned here instead: the runtime deps
-exported from uv.lock and installed with their hashes, then the wheel without
-deps, both wheels only.
+ci.yml's `package` job builds and installs the wheel instead, for the reason
+its comment gives; every command it runs is pinned here (`_PACKAGE_COMMANDS`),
+on the requires-python floor, with the build backend at an exact pin.
 
 The workflows are read line by line, not as YAML: a job is a key two spaces in
 under `jobs:`, a step a list item under its `steps:`, which is how every
@@ -29,10 +27,11 @@ _WORKFLOWS = _ROOT / ".github" / "workflows"
 
 # Commands that install Python packages: `pip install` under any pip name
 # (pip, pip3, pip3.12), `python -m pip` with or without the space, uv's pip,
-# sync, add, run and tool commands, uvx, pipx, poetry, pipenv, and
-# setup-python's `pip-install` input.
+# sync, add, run, tool and build commands (a build installs its backend),
+# uvx, pipx, poetry, pipenv, and setup-python's `pip-install` input.
 _INSTALLER = re.compile(
-    r"\bpip[\d.]*\s+install\b|-m\s*pip\b|\buv\s+(?:pip|sync|add|run|tool)\b|\buvx\b|\bpipx\b|\bpoetry\b|\bpipenv\b"
+    r"\bpip[\d.]*\s+install\b|-m\s*pip\b|\buv\s+(?:pip|sync|add|run|tool|build)\b|\buvx\b|\bpipx\b|\bpoetry\b"
+    r"|\bpipenv\b"
     r"|\bpip-install\s*:"
 )
 # A job runs Python tools when it sets up uv or runs `python -m`, pytest, ruff or basedpyright.
@@ -40,10 +39,19 @@ _PYTHON_TOOLS = re.compile(r"astral-sh/setup-uv@|\bpython\s+-m\b|\bpytest\b|\bru
 _JOB = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 _SETUP_UV = "astral-sh/setup-uv@"
 _PACKAGE_JOB = "ci.yml:package"
-_PACKAGE_EXPORT = "uv export --locked --no-emit-project --output-file /tmp/runtime.txt"
-_PACKAGE_INSTALLS = [
+_PACKAGE_COMMANDS = [
+    "uv build --wheel --out-dir dist",
+    "uv export --locked --no-emit-project --output-file /tmp/runtime.txt",
+    "uv venv /tmp/clean",
     "uv pip install --python /tmp/clean --no-build --require-hashes --requirements /tmp/runtime.txt",
     "uv pip install --python /tmp/clean --no-build --no-deps dist/*.whl",
+    '/tmp/clean/bin/python -I -c "import importlib.metadata as m, copper_design as c;'
+    " assert c.__file__.startswith('/tmp/clean/'), c.__file__; assert m.version('copper-design') == c.__version__\"",
+    '/tmp/clean/bin/python -I -m copper_design palette --root "$GITHUB_WORKSPACE"',
+    '/tmp/clean/bin/python -I -m copper_design render --root "$GITHUB_WORKSPACE"',
+    "/tmp/clean/bin/python -I -m copper_design preview /tmp/preview.html",
+    'git -C "$GITHUB_WORKSPACE" status --porcelain',
+    'test -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain)"',
 ]
 
 
@@ -116,7 +124,7 @@ def _scan_paths(key: str) -> set[str]:
     return set()
 
 
-def test_the_setup_command_installs_the_locked_dev_wheels_only() -> None:
+def test_the_setup_command_installs_the_locked_wheels_only() -> None:
     command = _setup_command().split()
     assert command[:2] == ["uv", "sync"]
     # --locked, not --frozen: --frozen installs a stale lock without a word.
@@ -149,16 +157,47 @@ def test_every_workflow_install_is_in_a_job() -> None:
     assert in_jobs == everywhere
 
 
-def test_the_package_job_installs_the_wheel_with_the_locked_runtime_deps() -> None:
-    lines = [_code(line) for line in _jobs()[_PACKAGE_JOB]]
-    assert [line for line in lines if _INSTALLER.search(line)] == _PACKAGE_INSTALLS
-    # The requirements come from uv.lock, which --locked holds to pyproject, and
-    # carry their hashes (uv export writes them unless told --no-hashes).
-    assert _PACKAGE_EXPORT in lines
-    assert lines.index(_PACKAGE_EXPORT) < lines.index(_PACKAGE_INSTALLS[0])
-    for install in _PACKAGE_INSTALLS:
-        assert "--no-build" in install.split()
-        assert "--python /tmp/clean" in install, "not into the clean venv"
+def _commands(job: list[str]) -> list[str]:
+    """A job's shell commands in order: each `run:` line, or each line of a `run: |` block."""
+    commands: list[str] = []
+    block = None
+    for line in job:
+        indent = len(line) - len(line.lstrip())
+        if block is not None and line.strip() and indent > block:
+            commands.append(line.strip())
+            continue
+        block = None
+        text = line.strip().removeprefix("- ")
+        if text.startswith("run:"):
+            rest = text.removeprefix("run:").strip()
+            if rest == "|":
+                block = indent
+            else:
+                commands.append(rest)
+    return commands
+
+
+def test_the_package_job_runs_exactly_its_pinned_commands() -> None:
+    job = _jobs()[_PACKAGE_JOB]
+    assert _commands(job) == _PACKAGE_COMMANDS
+    # From outside the checkout, so the import cannot come from the tree.
+    assert any(line.strip() == "working-directory: /tmp" for line in job)
+
+
+def test_the_package_job_runs_on_the_requires_python_floor() -> None:
+    project = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    floor = project["requires-python"].removeprefix(">=")
+    versions = re.findall(r'^\s+python-version:\s*"([^"]+)"', "\n".join(_jobs()[_PACKAGE_JOB]), re.MULTILINE)
+    assert versions == [floor, floor]
+
+
+def test_the_build_backend_is_pinned_exactly() -> None:
+    requires = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["build-system"]["requires"]
+    assert requires, "pyproject names no build backend"
+    loose = [
+        requirement for requirement in requires if not re.fullmatch(r"[A-Za-z0-9_.-]+==[0-9][0-9A-Za-z.]*", requirement)
+    ]
+    assert not loose, f"build requirements without an exact pin: {loose}"
 
 
 def test_every_job_running_python_tools_installs_with_the_setup_command() -> None:
