@@ -61,14 +61,16 @@ def test_the_audit_sees_every_path_a_call_writes(event: str, args: tuple[object,
     assert audit.touched, f"{event} {args} went unrecorded"
 
 
-def test_the_audit_places_a_path_relative_to_a_directory_descriptor() -> None:
-    audit = HomeAudit(REAL_HOME, (_ROOT,))
-    descriptor = os.open(REAL_HOME, os.O_RDONLY)
+def test_the_audit_places_a_path_relative_to_a_directory_descriptor(tmp_path: Path) -> None:
+    # A stand-in home, so the test opens no directory of the real one.
+    audit = HomeAudit(tmp_path, ())
+    descriptor = os.open(tmp_path, os.O_RDONLY)
     try:
         audit.hook("os.mkdir", ("new", 0o777, descriptor))
+        audit.hook("os.mkdir", ("new", 0o777, None))
     finally:
         os.close(descriptor)
-    assert audit.touched
+    assert audit.touched == ["os.mkdir 'new'"]
 
 
 def test_an_allowed_root_holding_the_real_home_is_refused() -> None:
