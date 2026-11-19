@@ -255,7 +255,7 @@ def test_the_preview_shows_the_material3_scheme_in_light_and_dark(tmp_path: Path
             (scheme[fill], scheme[text], text, fill, f"{contrast.ratio(scheme[text], scheme[fill]):.2f}")
             for text, fill in material.PAIRS
         ], mode
-    # A source is the copper name, after its mode where that is not the scheme's own.
+    # A source is the copper name, after its mode where that is the other mode or one mode for both.
     light, dark = by_mode["light"], by_mode["dark"]
     assert sources["light"]["primary"] == f"accent {light['accent']}"
     assert sources["light"]["inversePrimary"] == f"dark: accent {dark['accent']}"

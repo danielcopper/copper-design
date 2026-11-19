@@ -5,10 +5,7 @@ instead. ``CopperColors.kt`` and ``copper_colors.xml`` carry exactly the named
 colours and roles of the tokens, per mode. ``CopperColorScheme.kt`` sets every
 role of material3's ``ColorScheme`` exactly once per scheme, each to the colour
 copper_design.material's table names. Every pair of copper_design.material's
-PAIRS reaches 4.5:1: material3's own pairs of a colour and its ``on`` colour,
-onSurface and onSurfaceVariant on every surface, the inverse pairs, the fixed
-pairs, and primary, secondary, tertiary and error drawn as text on the
-background, the surface and every surface container.
+PAIRS reaches 4.5:1.
 """
 
 import re
@@ -327,8 +324,7 @@ def test_the_surface_containers_run_in_materials_order(mode: palette.Mode) -> No
 
 
 def test_the_colour_roles_take_the_step_that_reads_as_text_on_every_container() -> None:
-    # copper_design.material says why: the first step from 9 that reaches 4.5:1
-    # as a fill under step 1 and as text on surface Highest.
+    # copper_design.material says why.
     colour_roles: list[Role] = ["primary", "secondary", "tertiary", "error"]
     light = [str(material.SCHEME[role].light) for role in colour_roles]
     dark = [str(material.SCHEME[role].dark) for role in colour_roles]

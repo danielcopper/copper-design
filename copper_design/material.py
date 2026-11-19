@@ -16,7 +16,7 @@ from copper_design import contrast
 from copper_design.palette import MODES, Mode
 
 MATERIAL3 = "1.4.0"
-"""The material3 version whose ColorScheme Role follows: the one Compose BOM 2026.09.00 resolves to."""
+"""The material3 version whose ColorScheme the Role type follows: the one Compose BOM 2026.09.00 resolves to."""
 
 type Role = Literal[
     "primary",
@@ -266,13 +266,13 @@ PAIRS: tuple[tuple[Role, Role], ...] = (
 """The pairs of a colour (second) and the text drawn on it (first) that must reach 4.5:1:
 
 - material3's own pairs (its ``contentColorFor``): each colour with its ``on``
-  colour, surface, Dim, Bright and every container with onSurface, and each
-  fixed colour with its onFixed;
-- onSurface and onSurfaceVariant on surface, Dim, Bright, every container and
-  surfaceVariant;
+  colour, surface, Dim, Bright and every surface container with onSurface,
+  and each fixed colour with its onFixed;
+- onSurface and onSurfaceVariant on surface, Dim, Bright, every surface
+  container and surfaceVariant;
 - the snackbar's action, inversePrimary, on inverseSurface;
 - primary, secondary, tertiary and error as text on background, surface and
-  every container (GROUNDS);
+  every surface container (GROUNDS);
 - each fixed role's variant text on its Fixed and FixedDim colours.
 """
 
