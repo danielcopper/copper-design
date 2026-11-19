@@ -1,7 +1,8 @@
 {#-
   A herdr terminal theme. tests/test_herdr.py's docstring holds the rules this
   file follows (what herdr reads, which steps the terminal and ANSI colours take
-  and why), and the tests hold the rendered file to them.
+  and why, which panel colours it sets and which it leaves to herdr), and the
+  tests hold the rendered file to them.
 -#}
 {%- if mode == "light" -%}
 {%- set ansi = [
@@ -16,22 +17,11 @@
 {%- endif -%}
 {%- set panel = [
   ("foreground", "text"),
-  ("surface", "surface"),
-  ("canvas", "bg"),
-  ("chrome", "bg-alt"),
-  ("popover", "surface"),
-  ("raised", "surface-raised"),
-  ("hover", "neutral-4"),
-  ("selected", "selection"),
-  ("border", "border"),
-  ("input", "border-strong"),
   ("muted", "text-muted"),
   ("dim", "text-subtle"),
+  ("solid", "text"),
   ("accent", "accent"),
   ("accent_foreground", "on-accent"),
-  ("solid", "text"),
-  ("solid_foreground", "surface"),
-  ("ring", "accent"),
   ("working", "warning"),
   ("blocked", "error"),
   ("done", "success"),
