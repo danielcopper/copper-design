@@ -13,7 +13,9 @@ updates:
   # The Python deps: a bump moves one direct dep in uv.lock, and its pin in
   # pyproject.toml where there is one; an indirect dep moves only when such a
   # bump re-resolves it. The runtime deps are among them: a coloraide bump can
-  # move the palette's hex values, which the palette tests then show.
+  # move the palette's hex values, which the palette tests then show. A bump of
+  # the build backend's pin in pyproject.toml needs `mise run lock` for
+  # build-constraints.txt, which the install tests hold to it.
   - package-ecosystem: uv
     directory: /
     schedule:

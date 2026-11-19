@@ -26,11 +26,13 @@ _ROOT = Path(__file__).resolve().parents[1]
 _WORKFLOWS = _ROOT / ".github" / "workflows"
 
 # Commands that install Python packages: `pip install` under any pip name
-# (pip, pip3, pip3.12), `python -m pip` with or without the space, uv's pip,
-# sync, add, run, tool and build commands (a build installs its backend),
-# uvx, pipx, poetry, pipenv, and setup-python's `pip-install` input.
+# (pip, pip3, pip3.12), `python -m pip` with or without the space, uv's pip
+# commands but `uv pip compile` (it resolves and writes a file, installing
+# nothing), uv's sync, add, run, tool and build commands (a build installs its
+# backend), uvx, pipx, poetry, pipenv, and setup-python's `pip-install` input.
 _INSTALLER = re.compile(
-    r"\bpip[\d.]*\s+install\b|-m\s*pip\b|\buv\s+(?:pip|sync|add|run|tool|build)\b|\buvx\b|\bpipx\b|\bpoetry\b"
+    r"\bpip[\d.]*\s+install\b|-m\s*pip\b|\buv\s+pip\s+(?!compile\b)|\buv\s+(?:sync|add|run|tool|build)\b|\buvx\b"
+    r"|\bpipx\b|\bpoetry\b"
     r"|\bpipenv\b"
     r"|\bpip-install\s*:"
 )
@@ -40,7 +42,7 @@ _JOB = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 _SETUP_UV = "astral-sh/setup-uv@"
 _PACKAGE_JOB = "ci.yml:package"
 _PACKAGE_COMMANDS = [
-    "uv build --wheel --out-dir dist",
+    "uv build --wheel --out-dir dist --build-constraints build-constraints.txt --require-hashes",
     "uv export --locked --no-emit-project --output-file /tmp/runtime.txt",
     "uv venv /tmp/clean",
     "uv pip install --python /tmp/clean --no-build --require-hashes --requirements /tmp/runtime.txt",
@@ -158,13 +160,18 @@ def test_every_workflow_install_is_in_a_job() -> None:
 
 
 def _commands(job: list[str]) -> list[str]:
-    """A job's shell commands in order: each `run:` line, or each line of a `run: |` block."""
+    """A job's shell commands in order: each `run:` line, or each line of a `run: |` block.
+
+    A block runs on across blank lines and ends at the first line indented no
+    deeper than its `run:` key.
+    """
     commands: list[str] = []
     block = None
     for line in job:
         indent = len(line) - len(line.lstrip())
-        if block is not None and line.strip() and indent > block:
-            commands.append(line.strip())
+        if block is not None and (not line.strip() or indent > block):
+            if line.strip():
+                commands.append(line.strip())
             continue
         block = None
         text = line.strip().removeprefix("- ")
@@ -182,6 +189,85 @@ def test_the_package_job_runs_exactly_its_pinned_commands() -> None:
     assert _commands(job) == _PACKAGE_COMMANDS
     # From outside the checkout, so the import cannot come from the tree.
     assert any(line.strip() == "working-directory: /tmp" for line in job)
+
+
+def test_a_run_block_runs_on_across_blank_lines() -> None:
+    job = ["      - name: x", "        run: |", "          first", "", "          second", "      - run: third"]
+    assert _commands(job) == ["first", "second", "third"]
+
+
+def test_the_package_job_installs_only_with_its_pinned_commands() -> None:
+    # Every installer anywhere in the job, a `with:` input such as setup-python's
+    # `pip-install` included, is one of the pinned commands.
+    installs = [text for line in _jobs()[_PACKAGE_JOB] if _INSTALLER.search(text := _code(line))]
+    assert installs, "the package job installs nothing"
+    strays = [text for text in installs if text not in _PACKAGE_COMMANDS]
+    assert not strays, f"installs the package job does not pin: {strays}"
+
+
+def _keys(lines: list[str], indent: int) -> list[str]:
+    """The keys written at one indent, a step's leading `- ` counted as indent."""
+    keys = []
+    for line in lines:
+        text = line[indent:] if line[:indent].strip(" -") == "" and len(line) > indent else ""
+        match = re.match(r"([A-Za-z_-]+):", text)
+        if match and not line[indent - 1 : indent].isalnum():
+            keys.append(match.group(1))
+    return keys
+
+
+# The package job's own keys and each step's, in order: nothing may make a step
+# conditional, tolerate failure, change its shell or its environment, and only
+# the generator step runs from outside the checkout.
+_PACKAGE_JOB_KEYS = ["runs-on", "timeout-minutes", "steps"]
+_PACKAGE_STEP_KEYS = [
+    ["uses"],
+    ["uses", "with"],
+    ["uses", "with"],
+    ["name", "run"],
+    ["name", "run"],
+    ["name", "working-directory", "run"],
+]
+
+
+def test_the_package_job_and_its_steps_hold_only_their_pinned_keys() -> None:
+    job = _jobs()[_PACKAGE_JOB]
+    assert _keys(job, 4) == _PACKAGE_JOB_KEYS
+    assert [_keys(step, 8) for step in _steps(job)] == _PACKAGE_STEP_KEYS
+    (generator,) = [step for step in _steps(job) if "working-directory" in _keys(step, 8)]
+    assert "        working-directory: /tmp" in generator
+
+
+# The build backend's hashed constraint: mise.toml's `lock` task writes it from
+# pyproject's [build-system] requires with this command, and the package job
+# builds against it with --require-hashes.
+_BUILD_CONSTRAINTS = "build-constraints.txt"
+_LOCK_BUILD_CONSTRAINTS = (
+    "python -c 'import tomllib; "
+    'print(*tomllib.load(open("pyproject.toml", "rb"))["build-system"]["requires"], sep="\\n")\''
+    " | uv pip compile - --generate-hashes --universal --no-header --no-annotate --quiet"
+    " --output-file build-constraints.txt"
+)
+
+
+def test_the_lock_task_writes_the_build_constraints() -> None:
+    assert _LOCK_BUILD_CONSTRAINTS in _task_lines(_mise()["tasks"]["lock"]["run"])
+
+
+def test_the_build_constraints_pin_the_build_backend_with_hashes() -> None:
+    requires = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["build-system"]["requires"]
+    text = (_ROOT / _BUILD_CONSTRAINTS).read_text(encoding="utf-8").replace("\\\n", " ")
+    entries = [line.split() for line in text.splitlines() if line.strip() and not line.startswith("#")]
+    assert {entry[0] for entry in entries} == set(requires)
+    for entry in entries:
+        hashes = [part for part in entry[1:] if part.startswith("--hash=sha256:")]
+        assert hashes and len(hashes) == len(entry) - 1, f"{entry[0]}: not every option is a sha256 hash"
+
+
+def test_compiling_requirements_is_no_install_but_installing_is() -> None:
+    assert not _INSTALLER.search("uv pip compile - --generate-hashes --output-file build-constraints.txt")
+    assert _INSTALLER.search("uv pip install --python /tmp/clean x")
+    assert _INSTALLER.search("uv pip sync requirements.txt")
 
 
 def test_the_package_job_runs_on_the_requires_python_floor() -> None:
