@@ -20,6 +20,7 @@ def test_the_audit_flags_paths_under_the_real_home_only(home_audit: HomeAudit) -
     assert not home_audit.strays(_ROOT / "pyproject.toml")
     assert not home_audit.strays(Path(os.environ["HOME"]) / "file")
     assert not home_audit.strays(3)
+    assert not home_audit.strays("a\0b")
 
 
 def test_the_audit_records_an_access_it_flags() -> None:

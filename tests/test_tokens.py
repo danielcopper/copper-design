@@ -303,6 +303,7 @@ def test_sets_and_contexts_merge_in_order_with_the_last_token_winning(resolver_d
     [
         ({"version": "2025.06", "resolutionOrder": []}, "version must be 2025.10"),
         ({}, "resolutionOrder needs a non-empty list"),
+        ({"resolutionOrder": []}, "resolutionOrder needs a non-empty list"),
         ({"resolutionOrder": ["#/sets/s"]}, "resolutionOrder[0] is not a reference to a set or modifier"),
         ({"resolutionOrder": [{"$ref": 3}]}, "resolutionOrder[0] is not a reference to a set or modifier"),
         ({"resolutionOrder": [{"$ref": "#/tokens/x"}]}, "resolutionOrder refers to #/tokens/x"),

@@ -38,7 +38,12 @@ class HomeAudit:
         """Whether an access to this path is one the suite must not make."""
         if not isinstance(path, str | bytes | os.PathLike):
             return False
-        resolved = Path(os.fsdecode(path)).resolve()
+        try:
+            resolved = Path(os.fsdecode(path)).resolve()
+        except (OSError, ValueError):
+            # Not a path the hook can place (too long, a null byte); the call
+            # it watches raises on its own, and the hook must never raise.
+            return False
         if not resolved.is_relative_to(self.home):
             return False
         return not any(resolved.is_relative_to(root) for root in self.allowed)
@@ -64,6 +69,7 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     if _AUDIT.touched:
         reporter = session.config.pluginmanager.get_plugin("terminalreporter")
         if reporter is not None:
+            reporter.ensure_newline()
             reporter.write_line(f"the suite touched the real home: {_AUDIT.touched[:20]}", red=True)
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
