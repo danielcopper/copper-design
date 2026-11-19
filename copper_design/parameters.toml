@@ -13,9 +13,10 @@
 
 # The neutral scale has curves of its own, step 1 first. Light runs from a warm
 # paper (hue about 70) to violet-grey text (hue about 290); dark stays violet-grey
-# throughout.
+# throughout. Light step 10 sits at 0.54, so the subtle text on it reaches 4.5:1
+# on the app's background.
 [neutral.light]
-lightness = [0.987, 0.970, 0.939, 0.915, 0.890, 0.860, 0.810, 0.750, 0.650, 0.550, 0.500, 0.396]
+lightness = [0.987, 0.970, 0.939, 0.915, 0.890, 0.860, 0.810, 0.750, 0.650, 0.540, 0.500, 0.396]
 chroma = [0.011, 0.011, 0.015, 0.016, 0.016, 0.016, 0.014, 0.018, 0.027, 0.036, 0.046, 0.052]
 hue = [77, 72, 64, 62, 60, 55, 330, 300, 298, 292, 291, 290]
 
@@ -40,10 +41,12 @@ chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.
 # leaves the shared curve (step = lightness). Blue leans to petrol and red to rose,
 # as in Rosé Pine. Teal sits between green and blue by hue and apart from blue by
 # lightness: its solid steps (9-10) are lighter, so the two never meet. Yellow and
-# orange keep their solid steps light, with dark text on them; light blue is a
-# darker petrol under light text. In light mode step 11 is staggered in lightness
-# (green, yellow, orange, red, violet), so the hues stay apart with red-green
-# colour blindness. A new base colour is one more table here.
+# orange lift their solid steps: yellow far enough to carry dark text, orange only
+# part of the way, so in light mode neither dark nor light text reaches 4.5:1 on
+# orange's solid fill. Light blue is a darker petrol under light text. In light
+# mode step 11 is staggered in lightness (green, yellow, orange, red, violet), so
+# the hues stay apart with red-green colour blindness. A new base colour is one
+# more table here (the tests and the README list the base colours too).
 [hue.blue]
 hue = 245
 chroma = 0.112

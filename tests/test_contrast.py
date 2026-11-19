@@ -1,68 +1,42 @@
-"""The roles' contrast (WCAG 2.2): text 4.5:1 (1.4.3), graphics and component parts 3:1 (1.4.11).
+"""The roles reach their contrast in both modes, by copper_design.contrast's criteria.
 
-Each text and graphic role is measured against ``bg`` and ``surface`` in both
-modes. A pair that falls short is listed in EXCEPTIONS with its reason; an
-exception that no longer falls short fails too, so the list cannot go stale.
+The criteria are pinned here to issue 5's Done-when and decisions: the kinds and
+their needs, the backdrops, every role of the token files in exactly one kind,
+and the one exception, the decorative ``border``. An exception that no longer
+falls short fails, so the list cannot go stale.
 """
 
 import pytest
-from coloraide import Color
 
-from copper_design import palette, tokens
-
-TEXT = ("text", "text-muted", "text-subtle")
-GRAPHIC = ("accent", "border", "success", "warning", "error", "info")
-BACKDROPS = ("bg", "surface")
-
-# (mode, role, backdrop): why it may fall short.
-EXCEPTIONS = {
-    ("light", "text-subtle", "bg"): (
-        "4.49:1, short of 4.5 by 0.01. The step is the approved palette's tertiary text (neutral 10, 4.7:1 on "
-        "surface); the next step up is neutral 11, which text-muted already takes."
-    ),
-    **{
-        (mode, "border", backdrop): (
-            "A border separates surfaces and comes from the border steps (6-8), which stay below 3:1 by their "
-            "job; the first neutral step that reaches 3:1 is the solid fill (9). WCAG 1.4.11 asks 3:1 only of a "
-            "boundary that is needed to identify a control."
-        )
-        for mode in palette.MODES
-        for backdrop in BACKDROPS
-    },
-}
+from copper_design import contrast, palette, tokens
 
 
-def _ratio(foreground: str, background: str) -> float:
-    return Color(foreground).contrast(background)
-
-
-def _pairs() -> list[tuple[str, str, str, float]]:
-    return [
-        (mode, role, backdrop, need)
-        for mode in palette.MODES
-        for roles, need in ((TEXT, 4.5), (GRAPHIC, 3.0))
-        for role in roles
-        for backdrop in BACKDROPS
-    ]
-
-
-@pytest.mark.parametrize(("mode", "role", "backdrop", "need"), _pairs())
-def test_a_role_reaches_its_contrast_on_the_backgrounds(mode: str, role: str, backdrop: str, need: float) -> None:
-    colours = tokens.colours(mode)
-    ratio = _ratio(colours[role], colours[backdrop])
-    if (mode, role, backdrop) in EXCEPTIONS:
-        assert ratio < need, f"{mode} {role} on {backdrop} reaches {ratio:.2f}:1 now; drop its exception"
-    else:
-        assert ratio >= need, f"{mode} {role} on {backdrop}: {ratio:.2f}:1, needs {need}:1"
-
-
-def test_every_exception_names_a_measured_pair() -> None:
-    measured = {(mode, role, backdrop) for mode, role, backdrop, _ in _pairs()}
-    assert set(EXCEPTIONS) <= measured
+def test_the_criteria_are_the_issues() -> None:
+    assert contrast.NEEDS == {"text": 4.5, "graphic": 3.0}
+    assert contrast.BACKDROPS == ("bg", "surface")
+    kinds = {kind: {role for role, own in contrast.KINDS.items() if own == kind} for kind in contrast.NEEDS}
+    assert kinds["text"] == {"text", "text-muted", "text-subtle"}
+    assert kinds["graphic"] == {"accent", "border", "border-strong", "success", "warning", "error", "info"}
+    assert set(contrast.EXCEPTIONS) == {("border", "bg"), ("border", "surface")}
+    assert set(contrast.STATES) == {"success", "warning", "error", "info"}
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_text_on_accent_and_on_selection_reaches_4_5(mode: str) -> None:
-    colours = tokens.colours(mode)
-    assert _ratio(colours["on-accent"], colours["accent"]) >= 4.5
-    assert _ratio(colours["text"], colours["selection"]) >= 4.5
+def test_every_role_has_exactly_one_kind(mode: palette.Mode) -> None:
+    # KINDS is a dict, so no role has two; this holds that every role has one
+    # and that no kind names a role the token files lack.
+    assert set(tokens.load(mode).roles) == set(contrast.KINDS)
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_every_role_reaches_its_contrast(mode: palette.Mode) -> None:
+    checks = contrast.checks(tokens.colours(mode))
+    assert len(checks) == 10 * 2 + len(contrast.ON)
+    unexcused = [
+        f"{c.foreground} on {c.background}: {c.ratio:.2f}:1 < {c.need}"
+        for c in checks
+        if not c.passes and not c.exception
+    ]
+    assert not unexcused, f"{mode}: {unexcused}"
+    stale = [(c.foreground, c.background) for c in checks if c.exception and c.passes]
+    assert not stale, f"{mode}: these exceptions reach their contrast now; drop them: {stale}"

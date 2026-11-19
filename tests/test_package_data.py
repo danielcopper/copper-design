@@ -8,7 +8,6 @@ job, which renders from an installed wheel, would fail only there.
 """
 
 import tomllib
-from fnmatch import fnmatch
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -18,11 +17,14 @@ _PACKAGE = _ROOT / "copper_design"
 def test_every_data_file_of_the_package_is_package_data() -> None:
     pyproject = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     patterns = pyproject["tool"]["setuptools"]["package-data"]["copper_design"]
-    data = [
+    data = {
         path.relative_to(_PACKAGE).as_posix()
         for path in _PACKAGE.rglob("*")
         if path.is_file() and path.suffix not in {".py", ".pyc"} and "__pycache__" not in path.parts
-    ]
+    }
     assert data, "the package holds no data files"
-    missing = [name for name in data if not any(fnmatch(name, pattern) for pattern in patterns)]
+    # Matched as setuptools globs them: relative to the package, `*` within one
+    # directory level.
+    shipped = {path.relative_to(_PACKAGE).as_posix() for pattern in patterns for path in _PACKAGE.glob(pattern)}
+    missing = sorted(data - shipped)
     assert not missing, f"not package data, so not in the wheel: {missing}"

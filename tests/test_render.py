@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pytest
+from jinja2 import ChoiceLoader, DictLoader, Environment, PackageLoader
 
 from copper_design import palette, render, tokens
 from copper_design.__main__ import main
@@ -31,10 +32,10 @@ def test_the_herdr_port_is_the_light_and_dark_pair() -> None:
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_swatch_shows_each_base_colours_main_value_on_bg(mode: str) -> None:
+def test_the_swatch_shows_each_base_colours_main_value_on_bg(mode: palette.Mode) -> None:
     svg = (_ROOT / "docs" / f"swatch-{mode}.svg").read_text(encoding="utf-8")
-    colours = tokens.colours(mode)
-    bases = render.context(mode)["bases"]
+    loaded = tokens.load(mode)
+    colours, bases = loaded.colours, list(loaded.bases)
     fills = re.findall(r'<rect [^>]*fill="(#[0-9a-f]{6})"', svg)
     assert fills == [colours["bg"]] + [colours[name] for name in bases]
     assert re.findall(r">([a-z]+)</text>", svg) == bases
@@ -55,11 +56,10 @@ def test_render_writes_the_ports_and_swatch_below_the_root(tmp_path: Path) -> No
         assert (tmp_path / relative).read_text(encoding="utf-8") == text
 
 
-def test_palette_writes_the_palette_tokens(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tokens, "directory", lambda: tmp_path)
-    main(["palette"])
-    for name, text in render.palette_files().items():
-        assert (tmp_path / name).read_text(encoding="utf-8") == text
+def test_palette_writes_the_palette_tokens_below_the_root(tmp_path: Path) -> None:
+    main(["palette", "--root", str(tmp_path)])
+    for name, text in tokens.palette_files().items():
+        assert (tmp_path / "copper_design" / "tokens" / name).read_text(encoding="utf-8") == text
 
 
 def test_preview_writes_a_page_with_every_role_and_mode(tmp_path: Path) -> None:
@@ -71,4 +71,40 @@ def test_preview_writes_a_page_with_every_role_and_mode(tmp_path: Path) -> None:
     for mode in palette.MODES:
         for role in ("bg", "text-subtle", "on-accent", "info"):
             assert tokens.colours(mode)[role] in html
-    assert "(fails)" in html, "the page marks no role that falls short (border does)"
+    assert re.search(r"on bg \(needs 3\.0\) exception", html), "the page marks no exception (border has one)"
+    assert "FAILS" not in html
+    # Light beside dark: both modes in one wrapping row.
+    assert re.search(r"main \{ display: flex; flex-wrap: wrap; \}", html)
+    assert html.count("<section ") == 2
+    assert html.index("copper, light mode") < html.index("copper, dark mode")
+
+
+def test_a_broken_parameter_file_ends_the_run_with_its_message(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    def broken() -> dict[str, str]:
+        raise palette.ParameterError("parameters.toml: hue.blue: missing ['chroma']")
+
+    monkeypatch.setattr(tokens, "palette_files", broken)
+    with pytest.raises(SystemExit) as exit_info:
+        main(["palette", "--root", str(tmp_path)])
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().err == "error: parameters.toml: hue.blue: missing ['chroma']\n"
+
+
+def _env_with(template: str, text: str) -> Environment:
+    env = render.environment()
+    env.loader = ChoiceLoader([DictLoader({template: text}), PackageLoader("copper_design", "templates")])
+    return env
+
+
+def test_a_template_naming_a_missing_colour_names_template_and_mode() -> None:
+    env = _env_with("broken.svg.j2", '{{ c["no-such-role"] }}')
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 \(dark\): .*no-such-role"):
+        render.render(env, "broken.svg.j2", tokens.load("dark"))
+
+
+def test_a_json_template_rendering_no_valid_json_is_refused() -> None:
+    env = _env_with("broken.json.j2", '{"background": {{ c["bg"] }}}')
+    with pytest.raises(render.RenderError, match=r"^broken\.json\.j2 \(light\) rendered no valid JSON"):
+        render.render(env, "broken.json.j2", tokens.load("light"))

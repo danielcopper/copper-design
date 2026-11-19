@@ -4,7 +4,7 @@
     "$value": "{neutral.2}"
   },
   "bg-alt": {
-    "$description": "A second background beside bg: sidebars, bars, alternating rows.",
+    "$description": "A second background beside the content, darker than it: sidebars, bars.",
     "$value": "{neutral.3}"
   },
   "surface": {
@@ -16,8 +16,12 @@
     "$value": "{neutral.3}"
   },
   "border": {
-    "$description": "Borders and dividers between surfaces and around components.",
+    "$description": "The quiet, decorative edge of cards and dividers.",
     "$value": "{neutral.7}"
+  },
+  "border-strong": {
+    "$description": "An edge that identifies a control, such as an input field's outline.",
+    "$value": "{neutral.10}"
   },
   "text": {
     "$description": "Primary text.",
