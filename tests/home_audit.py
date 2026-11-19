@@ -1,12 +1,15 @@
 """The audit that keeps the suite off the real home; tests/conftest.py installs it for every run.
 
 The real home is the account's (from the password database), not HOME, which
-the suite points elsewhere and a child run inherits. The hook looks at every
-path argument of the calls that read a directory or write a file, places a path
-given relative to a directory descriptor, and records an access under the real
-home outside the paths the run itself lives in. It never raises: a path it
-cannot resolve is judged by its text. Child processes are not watched; they
-inherit the temporary HOME.
+the suite points elsewhere and a child run inherits. The hook looks at the path
+arguments of the calls in EVENTS: those that open a file or a database, read a
+directory, or create, write, move or remove one. It places a path given
+relative to a directory descriptor through /proc/self/fd and skips one it
+cannot place there (no /proc, or ``os.open`` with ``dir_fd``, whose audit event
+carries no descriptor). It records an access under the real home outside the
+paths the run itself lives in, and it never raises: a path it cannot resolve is
+judged by its text, one it cannot even read is skipped. Child processes are not
+watched; they inherit the temporary HOME.
 """
 
 import os
@@ -34,6 +37,9 @@ EVENTS: dict[str, tuple[tuple[int, int | None], ...]] = {
     "os.chown": ((0, 3),),
     "os.utime": ((0, 3),),
     "os.truncate": ((0, None),),
+    "os.setxattr": ((0, None),),
+    "os.removexattr": ((0, None),),
+    "sqlite3.connect": ((0, None),),
 }
 
 
@@ -54,7 +60,10 @@ def _place(path: object, descriptor: object) -> Path | None:
     """Where a path argument points, as well as it can be told without raising."""
     if not isinstance(path, str | bytes | os.PathLike):
         return None
-    text = os.fsdecode(path)
+    try:
+        text = os.fsdecode(path)
+    except Exception:  # a path object whose __fspath__ fails: the hook must not raise for it
+        return None
     if isinstance(descriptor, int) and descriptor >= 0 and not os.path.isabs(text.replace("\0", "")):
         try:
             text = os.path.join(os.readlink(f"/proc/self/fd/{descriptor}"), text)

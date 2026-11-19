@@ -1,9 +1,11 @@
-"""The suite runs with a home of its own and never touches the real one.
+"""The suite runs with a home of its own and keeps off the real one.
 
 Before any test or fixture runs, HOME and the XDG base directories point into a
 temporary directory. The audit hook of tests/home_audit.py then watches the
-whole run, and an access under the real home fails it at its end, with the
-accesses listed in the summary.
+whole run; an access under the real home, outside the paths the run itself lives
+in (this repository, the interpreter and the import path), fails it at its end,
+with the accesses listed in the summary. A temporary home that cannot be
+removed afterwards is reported there too.
 """
 
 import os
@@ -32,8 +34,14 @@ def pytest_configure() -> None:
     sys.addaudithook(_AUDIT.hook)
 
 
+_UNREMOVED: list[str] = []
+
+
+@pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session: pytest.Session) -> None:
-    shutil.rmtree(_TEMPORARY_HOME, ignore_errors=True)
+    # Last of all session-end hooks, so their accesses count too; anything later
+    # (the terminal summary) is not counted.
+    shutil.rmtree(_TEMPORARY_HOME, onexc=lambda _function, path, error: _UNREMOVED.append(f"{path}: {error}"))
     if _AUDIT.touched:
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
@@ -42,6 +50,9 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     if _AUDIT.touched:
         terminalreporter.section("real home", red=True)
         terminalreporter.write_line(f"the suite touched the real home: {_AUDIT.touched[:20]}", red=True)
+    if _UNREMOVED:
+        terminalreporter.section("temporary home", yellow=True)
+        terminalreporter.write_line(f"could not remove the temporary home: {_UNREMOVED[:5]}", yellow=True)
 
 
 @pytest.fixture
