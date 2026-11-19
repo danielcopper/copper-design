@@ -308,7 +308,8 @@ def test_the_build_constraints_pin_the_build_backend_with_hashes() -> None:
     assert {entry[0] for entry in entries} == set(requires)
     for entry in entries:
         hashes = [part for part in entry[1:] if part.startswith("--hash=sha256:")]
-        assert hashes and len(hashes) == len(entry) - 1, f"{entry[0]}: not every option is a sha256 hash"
+        assert hashes, f"{entry[0]}: no sha256 hash"
+        assert len(hashes) == len(entry) - 1, f"{entry[0]}: not every option is a sha256 hash"
 
 
 def test_compiling_requirements_is_no_install_but_installing_is() -> None:
