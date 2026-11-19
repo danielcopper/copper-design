@@ -1,7 +1,9 @@
-"""The preview page: palette, roles, their contrast, colour-blindness views and the herdr theme, per mode.
+"""The preview page: palette, roles, their contrast, colour-blindness views, the herdr theme and the Material 3
+colour scheme, per mode.
 
 The page is for judging the look before a release; it is written to a path the
-caller names and not committed. The contrast checks are copper_design.contrast's.
+caller names and not committed. The contrast checks are copper_design.contrast's
+and copper_design.material's.
 """
 
 import json
@@ -10,7 +12,7 @@ from typing import Any
 
 from coloraide import Color
 
-from copper_design import contrast, palette, render, tokens
+from copper_design import contrast, material, palette, render, tokens
 
 CVD = ("protan", "deutan", "tritan")
 
@@ -26,8 +28,32 @@ def _with_label(hex_colour: str, colours: Mapping[str, str]) -> tuple[str, str]:
     return hex_colour, max(ends, key=lambda end: contrast.ratio(end, hex_colour))
 
 
-def mode_data(mode_tokens: tokens.ModeTokens, herdr: dict[str, Any]) -> dict[str, Any]:
-    """Everything the page shows for one mode."""
+def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[str, Any]:
+    """The Material 3 colour scheme of one mode: each role with its source and colour, each pair's contrast.
+
+    A source is the copper name, after the mode it is taken from where that is the other mode or one mode for both.
+    """
+    resolved = material.resolved(mode, colours)
+    roles = [
+        {
+            "name": role,
+            "source": colour.name if material.SCHEME[role].of(mode).mode is None else f"{colour.mode}: {colour.name}",
+            "hex": colour.hex,
+        }
+        for role, colour in resolved.items()
+    ]
+    colour_scheme: dict[material.Role, str] = {role: colour.hex for role, colour in resolved.items()}
+    pairs = [
+        {"check": check, "text": colour_scheme[text], "fill": colour_scheme[fill]}
+        for (text, fill), check in zip(material.PAIRS, material.checks(colour_scheme), strict=True)
+    ]
+    return {"version": material.MATERIAL3, "roles": roles, "pairs": pairs}
+
+
+def mode_data(
+    mode_tokens: tokens.ModeTokens, herdr: dict[str, Any], colours_by_mode: material.ColoursByMode
+) -> dict[str, Any]:
+    """Everything the page shows for one mode; its Material 3 scheme takes from both modes' colours."""
     colours = mode_tokens.colours
     checks = contrast.checks(colours)
     named = [*(name for name in mode_tokens.bases if name != palette.NEUTRAL), *contrast.STATES]
@@ -57,15 +83,17 @@ def mode_data(mode_tokens: tokens.ModeTokens, herdr: dict[str, Any]) -> dict[str
         },
         "herdr": herdr,
         "ansi": [(hex_colour, contrast.ratio(hex_colour, herdr["background"])) for hex_colour in herdr["ansi"]],
+        "material": material_data(mode_tokens.mode, colours_by_mode),
     }
 
 
 def page() -> str:
     """The preview page as HTML."""
     env = render.environment()
+    by_mode: dict[palette.Mode, tokens.ModeTokens] = {mode: tokens.load(mode) for mode in palette.MODES}
+    colours: material.ColoursByMode = {mode: loaded.colours for mode, loaded in by_mode.items()}
     modes = []
-    for mode in palette.MODES:
-        mode_tokens = tokens.load(mode)
+    for mode_tokens in by_mode.values():
         herdr = json.loads(render.render(env, render.HERDR_TEMPLATE, mode_tokens))
-        modes.append(mode_data(mode_tokens, herdr))
+        modes.append(mode_data(mode_tokens, herdr, colours))
     return render.render_template(env, "preview.html.j2", "both modes", modes=modes)

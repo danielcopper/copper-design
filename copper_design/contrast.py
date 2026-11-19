@@ -63,11 +63,8 @@ class Check:
     background: str
     need: float
     ratio: float
-
-    @property
-    def exception(self) -> str | None:
-        """Why this pair may fall short, if it may."""
-        return EXCEPTIONS.get((self.foreground, self.background))
+    exception: str | None = None
+    """Why this pair may fall short, if it may."""
 
     @property
     def passes(self) -> bool:
@@ -81,11 +78,18 @@ def ratio(foreground: str, background: str) -> float:
 
 def checks(colours: Mapping[str, str]) -> list[Check]:
     """Every contrast check for one mode's colours, in role order."""
+
+    def check(foreground: str, background: str, need: float) -> Check:
+        return Check(
+            foreground,
+            background,
+            need,
+            ratio(colours[foreground], colours[background]),
+            EXCEPTIONS.get((foreground, background)),
+        )
+
     result = [
-        Check(role, backdrop, NEEDS[kind], ratio(colours[role], colours[backdrop]))
-        for role, kind in KINDS.items()
-        if kind in NEEDS
-        for backdrop in BACKDROPS
+        check(role, backdrop, NEEDS[kind]) for role, kind in KINDS.items() if kind in NEEDS for backdrop in BACKDROPS
     ]
-    result += [Check(fg, bg, NEEDS["text"], ratio(colours[fg], colours[bg])) for fg, bg in SITS_ON]
+    result += [check(foreground, background, NEEDS["text"]) for foreground, background in SITS_ON]
     return result

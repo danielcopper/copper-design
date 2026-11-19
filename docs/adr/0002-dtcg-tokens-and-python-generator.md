@@ -1,7 +1,7 @@
 ---
 status: accepted
 decided: 2026-11-18
-updated: 2026-11-18
+updated: 2026-11-19
 ---
 
 # Tokens are DTCG 2025.10 JSON per mode; a Python generator renders them through Jinja2 templates
@@ -47,3 +47,12 @@ resolver file.
 
 **An own YAML format.** Shorter to write by hand, but no specification: references, types, colour spaces and modes would
 be conventions of this repository alone, documented and validated here, and no other tool would read the files.
+
+## Amendment — templates fed both modes, and a target's mapping in a module of its own
+
+The Android port ([issue 10](https://github.com/danielcopper/copper-design/issues/10)) widens two points of this record.
+A template may be fed the resolved tokens of both modes at once and rendered once, where the target holds both modes in
+one file: its Kotlin carries the light and the dark colours and colour schemes side by side, while its colour resources
+stay one file per mode. And where a target maps copper's roles onto a colour model of its own, such as Material 3's
+colour scheme, that mapping lives as data in a Python module of its own (`copper_design/material.py`), which the
+template, the contrast checks and the preview read alike. Adding such a target is a template plus that module.

@@ -23,6 +23,10 @@
   .term { border-radius: 10px; padding: 14px 18px; font: 13px/1.6 ui-monospace, monospace; }
   .card { border-radius: 10px; padding: 16px; display: inline-block; margin: 0 12px 12px 0; vertical-align: top; }
   .button { border-radius: 6px; padding: 6px 14px; display: inline-block; }
+  .m3-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 12px; }
+  .m3-role { display: flex; align-items: center; gap: 8px; }
+  .m3-pairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-top: 14px; }
+  .m3-pair { border-radius: 8px; padding: 8px 10px; }
 </style>
 </head>
 <body>
@@ -31,7 +35,7 @@
 {%- set c = m.c %}
 <section style="background: {{ c['bg'] }}; color: {{ c['text'] }};">
   <h1>copper, {{ m.mode }} mode</h1>
-  <p class="note" style="color: {{ c['text-muted'] }}">Palette, roles, their contrast, colour-blindness views and the herdr theme.</p>
+  <p class="note" style="color: {{ c['text-muted'] }}">Palette, roles, their contrast, colour-blindness views, the herdr theme and the Material 3 colour scheme.</p>
 
   <h2>Palette</h2>
   <table>
@@ -117,6 +121,23 @@
     <tr><td class="mono">{{ key }}</td><td><span class="chip" style="background: {{ hex }}; height: 18px; outline: 1px solid {{ c['border'] }}"></span></td><td class="mono">{{ hex }}</td></tr>
     {%- endfor %}
   </table>
+
+  {%- set md = m.material %}
+  <h2>Material 3 colour scheme</h2>
+  <p class="note" style="color: {{ c['text-muted'] }}">The Android port's {{ m.mode }} scheme (material3 {{ md.version }}): each role with its copper source, then each measured pair of a colour and the text drawn on it, the colour roles as text on the grounds included (needs {{ md.pairs[0].check.need }}).</p>
+  <div class="m3-roles">
+    {%- for role in md.roles %}
+    <div class="m3-role"><span class="chip" style="background: {{ role.hex }}; outline: 1px solid {{ c['border'] }}"></span>
+      <div><div class="mono">{{ role.name }}</div><div class="mono" style="color: {{ c['text-muted'] }}">{{ role.source }} {{ role.hex }}</div></div></div>
+    {%- endfor %}
+  </div>
+  <div class="m3-pairs">
+    {%- for pair in md.pairs %}
+    <div class="m3-pair{{ ' fail' if not pair.check.passes }}" style="background: {{ pair.fill }}; color: {{ pair.text }}; outline: 1px solid {{ c['border'] }}">
+      <div>{{ pair.check.foreground }}</div>
+      <div class="mono">on {{ pair.check.background }}: {{ '%.2f' % pair.check.ratio }}{{ ' FAILS' if not pair.check.passes }}</div></div>
+    {%- endfor %}
+  </div>
 </section>
 {%- endfor %}
 </main>
