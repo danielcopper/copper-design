@@ -1,8 +1,9 @@
 ---
 status: accepted
 decided: 2026-11-18
-updated: 2026-11-18
+updated: 2026-11-19
 amends: [0001]
+amended-by: [0005]
 ---
 
 # copper is a design system, filled one asset kind at a time
@@ -47,3 +48,9 @@ spacing, then icons and illustrations, each kind through an issue of its own.**
 would not move for changes it does not take. Rejected because icons here will be drawn from the palette: a palette
 change and the icon change it causes would land in two releases, and a consumer would have to move two pins in step and
 know which versions belong together.
+
+## Amendment — shared colours are named colours and general roles
+
+[ADR-0005](0005-named-colours-and-general-roles.md) narrows the first bullet of the decision for colours: what two or
+more consumers share lives here as named colours and general UI roles. A domain meaning they share, such as a calendar's
+colours, stays with each consumer, which picks it from the named colours; only those named colours live here.

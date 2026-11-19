@@ -1,0 +1,89 @@
+# The palette's parameters: the generator writes the palette tokens
+# (tokens/palette.<mode>.tokens.json) from this file, and a test holds the
+# committed tokens equal to its output. Edit this file, then run `mise run render`.
+#
+# Every scale has 12 steps with a fixed job (GLOSSARY.md, Step). A step is set in
+# OKLCH by its lightness (0-1), chroma and hue (degrees), then fitted into sRGB
+# by coloraide's ray-trace gamut mapping, which keeps lightness and hue and lowers
+# chroma until the colour fits.
+#
+# The mood is that of Rosé Pine, measured in OKLCH, not its colours: in light mode
+# a warm, paper-like ground with violet-grey text, in dark mode a deep violet-grey;
+# the colours dusty and muted.
+
+# The neutral scale has curves of its own, step 1 first. Light runs from a warm
+# paper (hue about 70) to violet-grey text (hue about 290); dark stays violet-grey
+# throughout. Light step 10 sits at 0.54, so the subtle text on it reaches 4.5:1
+# on the app's background.
+[neutral.light]
+lightness = [0.987, 0.970, 0.939, 0.915, 0.890, 0.860, 0.810, 0.750, 0.650, 0.540, 0.500, 0.396]
+chroma = [0.011, 0.011, 0.015, 0.016, 0.016, 0.016, 0.014, 0.018, 0.027, 0.036, 0.046, 0.052]
+hue = [77, 72, 64, 62, 60, 55, 330, 300, 298, 292, 291, 290]
+
+[neutral.dark]
+lightness = [0.190, 0.213, 0.241, 0.271, 0.300, 0.330, 0.380, 0.460, 0.630, 0.680, 0.740, 0.909]
+chroma = [0.022, 0.025, 0.032, 0.042, 0.044, 0.045, 0.045, 0.044, 0.044, 0.044, 0.044, 0.030]
+hue = [290, 290, 290, 290, 290, 290, 290, 290, 290, 290, 290, 290]
+
+# The hues share one curve per mode: the lightness per step, so a step looks about
+# equally light across the hues, and the chroma per step as a share of the hue's
+# peak chroma. Steps 1-8 carry a little more colour than a plain curve, so tinted
+# grounds read as tinted.
+[curve.light]
+lightness = [0.990, 0.975, 0.945, 0.915, 0.880, 0.840, 0.780, 0.700, 0.580, 0.540, 0.470, 0.360]
+chroma = [0.084, 0.168, 0.280, 0.392, 0.504, 0.616, 0.770, 1.008, 1.00, 1.00, 0.95, 0.80]
+
+[curve.dark]
+lightness = [0.190, 0.225, 0.270, 0.310, 0.350, 0.400, 0.480, 0.640, 0.760, 0.795, 0.800, 0.920]
+chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.80, 0.35]
+
+# The hues: OKLCH hue angle (degrees) and peak chroma, and per mode the steps
+# whose lightness leaves the shared curve (step = lightness). Blue leans to
+# petrol and red to rose, as in Rosé Pine. Teal sits between green and blue by
+# hue and apart from blue by lightness: its solid steps (9-10) are lighter, so
+# the two never meet. Yellow and
+# orange lift their solid steps: yellow far enough to carry dark text, orange only
+# part of the way, so in light mode neither dark nor light text reaches 4.5:1 on
+# orange's solid fill. Light blue is a darker petrol under light text. In light
+# mode step 11 is staggered in lightness (green, yellow, orange, red, violet), so
+# the hues stay apart with red-green colour blindness. A new base colour is one
+# more table here; the base colours are also named in the tests (test_palette,
+# test_tokens, test_render), in GLOSSARY.md (Base colour) and in the README's swatch
+# description, and counted ("eight") in the README.
+[hue.blue]
+angle = 245
+chroma = 0.112
+light = { 9 = 0.500, 10 = 0.460 }
+
+[hue.green]
+angle = 140
+chroma = 0.087
+light = { 11 = 0.490 }
+
+[hue.teal]
+angle = 195
+chroma = 0.081
+light = { 9 = 0.640, 10 = 0.600 }
+dark = { 9 = 0.840, 10 = 0.870 }
+
+[hue.yellow]
+angle = 73
+chroma = 0.099
+light = { 9 = 0.800, 10 = 0.770, 11 = 0.600 }
+dark = { 9 = 0.845, 10 = 0.875 }
+
+[hue.orange]
+angle = 50
+chroma = 0.102
+light = { 9 = 0.650, 10 = 0.610, 11 = 0.530 }
+dark = { 9 = 0.785, 10 = 0.815 }
+
+[hue.red]
+angle = 4
+chroma = 0.115
+light = { 11 = 0.430 }
+
+[hue.violet]
+angle = 306
+chroma = 0.124
+light = { 11 = 0.500 }

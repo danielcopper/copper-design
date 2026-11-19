@@ -1,0 +1,12 @@
+{#- The README's swatch strip: each base colour's main value (step 9) on the mode's background. -#}
+{%- set width, gap, pad = 80, 8, 16 -%}
+{%- set total = pad * 2 + bases | length * width + (bases | length - 1) * gap -%}
+<svg xmlns="http://www.w3.org/2000/svg" width="{{ total }}" height="104" viewBox="0 0 {{ total }} 104" role="img" aria-labelledby="title">
+  <title id="title">copper's base colours in {{ mode }} mode</title>
+  <rect width="{{ total }}" height="104" rx="12" fill="{{ c["bg"] }}"/>
+{%- for name in bases %}
+{%- set x = pad + loop.index0 * (width + gap) %}
+  <rect x="{{ x }}" y="{{ pad }}" width="{{ width }}" height="48" rx="8" fill="{{ c[name] }}"/>
+  <text x="{{ x + width // 2 }}" y="86" fill="{{ c["text-muted"] }}" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">{{ name }}</text>
+{%- endfor %}
+</svg>

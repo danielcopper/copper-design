@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="728" height="104" viewBox="0 0 728 104" role="img" aria-labelledby="title">
+  <title id="title">copper's base colours in light mode</title>
+  <rect width="728" height="104" rx="12" fill="#faf4ed"/>
+  <rect x="16" y="16" width="80" height="48" rx="8" fill="#918c9e"/>
+  <text x="56" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">neutral</text>
+  <rect x="104" y="16" width="80" height="48" rx="8" fill="#1c689e"/>
+  <text x="144" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">blue</text>
+  <rect x="192" y="16" width="80" height="48" rx="8" fill="#5e8755"/>
+  <text x="232" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">green</text>
+  <rect x="280" y="16" width="80" height="48" rx="8" fill="#489c9b"/>
+  <text x="320" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">teal</text>
+  <rect x="368" y="16" width="80" height="48" rx="8" fill="#e5b474"/>
+  <text x="408" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">yellow</text>
+  <rect x="456" y="16" width="80" height="48" rx="8" fill="#c17c54"/>
+  <text x="496" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">orange</text>
+  <rect x="544" y="16" width="80" height="48" rx="8" fill="#b15b72"/>
+  <text x="584" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">red</text>
+  <rect x="632" y="16" width="80" height="48" rx="8" fill="#8d65b4"/>
+  <text x="672" y="86" fill="#635f7c" font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">violet</text>
+</svg>

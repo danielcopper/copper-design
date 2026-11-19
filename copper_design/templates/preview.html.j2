@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>copper preview</title>
+<style>
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; }
+  /* Light beside dark; on a narrow window the second mode wraps below the first. */
+  main { display: flex; flex-wrap: wrap; }
+  section { flex: 1 1 900px; min-width: 0; padding: 24px 28px 40px; box-sizing: border-box; overflow-x: auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 28px 0 10px; font-size: 16px; }
+  p.note { margin: 0 0 8px; }
+  table { border-collapse: collapse; }
+  td, th { padding: 3px 6px; text-align: left; vertical-align: middle; }
+  th { font-weight: 600; }
+  .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+  .chip { display: inline-block; width: 56px; height: 32px; border-radius: 6px; }
+  .step { width: 60px; height: 42px; border-radius: 6px; display: flex; align-items: flex-end; justify-content: center;
+          font: 10px ui-monospace, monospace; padding-bottom: 3px; box-sizing: border-box; }
+  .fail { font-weight: 700; }
+  .term { border-radius: 10px; padding: 14px 18px; font: 13px/1.6 ui-monospace, monospace; }
+  .card { border-radius: 10px; padding: 16px; display: inline-block; margin: 0 12px 12px 0; vertical-align: top; }
+  .button { border-radius: 6px; padding: 6px 14px; display: inline-block; }
+</style>
+</head>
+<body>
+<main>
+{%- for m in modes %}
+{%- set c = m.c %}
+<section style="background: {{ c['bg'] }}; color: {{ c['text'] }};">
+  <h1>copper, {{ m.mode }} mode</h1>
+  <p class="note" style="color: {{ c['text-muted'] }}">Palette, roles, their contrast, colour-blindness views and the herdr theme.</p>
+
+  <h2>Palette</h2>
+  <table>
+    <tr><th></th>{% for step in range(1, 13) %}<th class="mono">{{ step }}</th>{% endfor %}</tr>
+    {%- for name in m.bases %}
+    <tr>
+      <th>{{ name }}</th>
+      {%- for hex, label in m.scales[name] %}
+      <td><div class="step" style="background: {{ hex }}; color: {{ label }}">{{ hex }}</div></td>
+      {%- endfor %}
+    </tr>
+    {%- endfor %}
+  </table>
+
+  <h2>Roles</h2>
+  <table>
+    <tr><th>role</th><th></th><th>step</th><th>hex</th><th>kind</th><th>contrast</th></tr>
+    {%- for row in m.roles %}
+    <tr>
+      <td class="mono">{{ row.name }}</td>
+      <td><span class="chip" style="background: {{ row.hex }}; outline: 1px solid {{ c['border'] }}"></span></td>
+      <td class="mono">{{ row.reference }}</td>
+      <td class="mono">{{ row.hex }}</td>
+      <td class="mono">{{ row.kind }}</td>
+      <td class="mono">
+        {%- for check in row.checks %}
+        <span class="{{ 'fail' if not check.passes and not check.exception }}">{{ '%.2f' % check.ratio }} on {{ check.background }} (needs {{ check.need }}){{ ' exception' if not check.passes and check.exception }}{{ ' FAILS' if not check.passes and not check.exception }}</span>{{ ';' if not loop.last }}
+        {%- endfor %}
+      </td>
+    </tr>
+    {%- endfor %}
+  </table>
+
+  <h2>In use</h2>
+  <div class="card" style="background: {{ c['surface'] }}; border: 1px solid {{ c['border'] }}">
+    <div style="color: {{ c['text'] }}; font-weight: 600">A card on bg</div>
+    <div style="color: {{ c['text-muted'] }}">Muted text on surface</div>
+    <div style="color: {{ c['text-subtle'] }}">Subtle text on surface</div>
+    <div style="margin-top: 10px; background: {{ c['surface-raised'] }}; border-radius: 6px; padding: 6px 10px">surface-raised</div>
+    <div style="margin-top: 10px; border: 1px solid {{ c['border-strong'] }}; border-radius: 6px; padding: 6px 10px; color: {{ c['text-subtle'] }}">An input field (border-strong)</div>
+    <div style="margin-top: 10px"><span class="button" style="background: {{ c['accent'] }}; color: {{ c['on-accent'] }}">Accent</span>
+      <span style="background: {{ c['selection'] }}; padding: 2px 4px">selected text</span></div>
+    <div style="margin-top: 10px">
+      {%- for state in m.states %}
+      <span style="color: {{ c[state] }}; margin-right: 10px">&#9679; {{ state }}</span>
+      {%- endfor %}
+    </div>
+  </div>
+  <div class="card" style="background: {{ c['bg-alt'] }}">
+    <div style="color: {{ c['text'] }}">bg-alt: a sidebar</div>
+  </div>
+
+  <h2>Colour-blindness views</h2>
+  <table>
+    <tr><th></th>{% for name in m.cvd.names %}<th class="mono">{{ name }}</th>{% endfor %}</tr>
+    {%- for kind, hexes in m.cvd.rows %}
+    <tr><th>{{ kind }}</th>{% for hex in hexes %}<td><span class="chip" style="background: {{ hex }}"></span></td>{% endfor %}</tr>
+    {%- endfor %}
+  </table>
+
+  <h2>herdr theme</h2>
+  {%- set h = m.herdr %}
+  <div style="background: {{ h.colors.chrome }}; padding: 10px; border-radius: 12px">
+  <div class="term" style="background: {{ h.background }}; color: {{ h.foreground }}; border: 1px solid {{ h.colors.border }}">
+    <div>$ ls --color <span style="background: {{ h.selection }}">selected</span><span style="background: {{ h.cursor }}">&nbsp;</span></div>
+    {%- for start in [0, 8] %}
+    <div>
+      {%- for hex, ratio in m.ansi[start:start + 8] %}
+      <span style="color: {{ hex }}; margin-right: 12px">ansi{{ start + loop.index0 }} {{ '%.1f' % ratio }}</span>
+      {%- endfor %}
+    </div>
+    {%- endfor %}
+    <div style="margin-top: 6px">
+      {%- for hex in h.ansi[1:7] %}<span style="background: {{ h.ansi[0] }}; color: {{ hex }}; padding: 0 6px">on black</span>{% endfor %}
+    </div>
+    <div>
+      {%- for hex in h.ansi[1:7] %}<span style="background: {{ h.ansi[7] }}; color: {{ hex }}; padding: 0 6px">on white</span>{% endfor %}
+    </div>
+  </div>
+  </div>
+  <table style="margin-top: 10px">
+    {%- for key, hex in h.colors.items() %}
+    <tr><td class="mono">{{ key }}</td><td><span class="chip" style="background: {{ hex }}; height: 18px; outline: 1px solid {{ c['border'] }}"></span></td><td class="mono">{{ hex }}</td></tr>
+    {%- endfor %}
+  </table>
+</section>
+{%- endfor %}
+</main>
+</body>
+</html>

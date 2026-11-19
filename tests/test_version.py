@@ -7,8 +7,10 @@ release-please-config.json, which finds the line by its
 ``x-release-please-version`` annotation). These tests make drift between pyproject.toml
 and ``__version__`` a red test, and a release PR runs them, so once main's ruleset
 requires the test checks, a release that bumps one spelling without the other
-cannot merge. No installed distribution's metadata is compared: the venv holds
-only the dev deps, not the project (mise.toml's `setup` task says why).
+cannot merge. No installed distribution's metadata is compared here: the venv
+holds the locked deps, not the project (mise.toml's `setup` task says why); the
+`package` job in .github/workflows/ci.yml compares the installed wheel's
+metadata version with ``__version__``.
 """
 
 import json

@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=77"]
+# Exact pin: the package job in .github/workflows/ci.yml builds the wheel with
+# it, and tests/test_ci_install.py holds it pinned.
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +12,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = []
+# Exact pins: coloraide's gamut fit decides the palette's hex values, so a new
+# release moves the colours only through a reviewed bump of this line.
+dependencies = ["coloraide==8.16", "jinja2==3.1.6"]
 
 [project.optional-dependencies]
 # Exact pins for the checkers, so a checker release moves only through a reviewed
@@ -26,6 +30,12 @@ filterwarnings = ["error"]
 
 [tool.setuptools.packages.find]
 include = ["copper_design*"]
+
+# The generator's data, read through importlib.resources, so an installed
+# package renders as the tree does; tests/test_package_data.py holds every
+# non-Python file of the package to one of these patterns.
+[tool.setuptools.package-data]
+copper_design = ["parameters.toml", "tokens/*.json", "templates/*.j2"]
 
 [tool.basedpyright]
 pythonVersion = "3.12"

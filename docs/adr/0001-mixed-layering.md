@@ -1,8 +1,8 @@
 ---
 status: accepted
 decided: 2026-11-18
-updated: 2026-11-18
-amended-by: [0004]
+updated: 2026-11-19
+amended-by: [0004, 0005]
 ---
 
 # Palette, roles and generic ports live here; component colours stay with their consumer
@@ -55,3 +55,9 @@ This record was written for colours alone. [ADR-0004](0004-design-system-step-by
 system and applies this record's split between what is shared here and what stays with one consumer to every asset kind.
 Icons are an asset kind of their own there, so the launcher icon in the fourth layer above stands for its colour only;
 where the icon file lives is decided under ADR-0004.
+
+## Amendment — roles are general UI roles
+
+[ADR-0005](0005-named-colours-and-general-roles.md) narrows the second layer: the roles are a small set of general UI
+meanings (backgrounds, borders, text, accent, selection, states), beside the named colours — each base colour's main
+value and its steps. It also says what becomes of a component colour that a second consumer needs.

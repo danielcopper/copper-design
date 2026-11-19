@@ -1,0 +1,56 @@
+{#-
+  A herdr terminal theme. tests/test_herdr.py's docstring holds the rules this
+  file follows (what herdr reads, which steps the terminal and ANSI colours take
+  and why), and the tests hold the rendered file to them.
+-#}
+{%- if mode == "light" -%}
+{%- set ansi = [
+  "neutral-12", "red-11", "green-11", "yellow-12", "blue-11", "violet-11", "teal-11", "neutral-3",
+  "neutral-11", "red-10", "green-10", "yellow-11", "blue-9", "violet-10", "teal-10", "neutral-9",
+] -%}
+{%- else -%}
+{%- set ansi = [
+  "neutral-6", "red-9", "green-9", "yellow-9", "blue-9", "violet-9", "teal-9", "neutral-11",
+  "neutral-9", "red-11", "green-11", "yellow-10", "blue-11", "violet-11", "teal-10", "neutral-12",
+] -%}
+{%- endif -%}
+{%- set panel = [
+  ("foreground", "text"),
+  ("surface", "surface"),
+  ("canvas", "bg"),
+  ("chrome", "bg-alt"),
+  ("popover", "surface"),
+  ("raised", "surface-raised"),
+  ("hover", "neutral-4"),
+  ("selected", "selection"),
+  ("border", "border"),
+  ("input", "border-strong"),
+  ("muted", "text-muted"),
+  ("dim", "text-subtle"),
+  ("accent", "accent"),
+  ("accent_foreground", "on-accent"),
+  ("solid", "text"),
+  ("solid_foreground", "surface"),
+  ("ring", "accent"),
+  ("working", "warning"),
+  ("blocked", "error"),
+  ("done", "success"),
+  ("idle", "text-subtle"),
+  ("unknown", "text-subtle"),
+] -%}
+{
+  "background": {{ c["surface"] | tojson }},
+  "foreground": {{ c["text"] | tojson }},
+  "selection": {{ c["selection"] | tojson }},
+  "cursor": {{ c["text"] | tojson }},
+  "ansi": [
+{%- for name in ansi %}
+    {{ c[name] | tojson }}{{ "," if not loop.last }}
+{%- endfor %}
+  ],
+  "colors": {
+{%- for key, name in panel %}
+    {{ key | tojson }}: {{ c[name] | tojson }}{{ "," if not loop.last }}
+{%- endfor %}
+  }
+}

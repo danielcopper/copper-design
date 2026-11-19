@@ -16,7 +16,8 @@ illustrations together are **artwork**.
 ### Token
 
 A named, typed value that the generator renders into **ports**, such as a palette step or a role. Colour tokens are DTCG
-2025.10 JSON ([ADR-0002](docs/adr/0002-dtcg-tokens-and-python-generator.md)).
+2025.10 JSON ([ADR-0002](docs/adr/0002-dtcg-tokens-and-python-generator.md)): a palette file and a role file per
+**mode**, and a resolver file that selects the mode.
 
 ### Artwork
 
@@ -26,12 +27,26 @@ Icons and illustrations: files, not **tokens**. Which files may enter this repos
 ### Palette
 
 All colours of copper for one **mode**: one **scale** per **base colour**. The palette carries no meaning beyond the job
-of each **step**; meaning is what a **role** adds. Each mode has its own palette file.
+of each **step**; meaning is what a **role** adds. Each mode has its own palette file, which the generator writes from
+the **parameter file**.
+
+### Parameter file
+
+The source of the palette's values (`copper_design/parameters.toml`): per hue its OKLCH hue angle and peak chroma, per
+mode the lightness and chroma curves over the 12 steps, the neutral's own curves, and the steps a hue moves off the
+shared curve. The palette tokens are generated from it and never edited by hand.
 
 ### Base colour
 
-A colour the palette carries a scale of: the neutral, or one hue such as blue or red. A base colour names a family, not
-one colour; its scale holds the colours.
+A colour the palette carries a scale of: the neutral, or one of the hues blue, green, teal, yellow, orange, red and
+violet. A base colour names a family, not one colour; its scale holds the colours. One is added when a port needs it;
+the **parameter file** lists what that takes.
+
+### Named colour
+
+A base colour's main value, under its plain name (`blue`, which is its step 9), or one of its steps (`blue-1` …
+`blue-12`), in one mode. Ports and consumers pick from the named colours what the **roles** do not cover, such as a
+terminal's ANSI colours or a calendar's colours.
 
 ### Scale
 
@@ -62,9 +77,13 @@ set for each mode on its own, never derived by inverting the other.
 
 ### Role
 
-A named meaning that two or more consumers share, such as `text.primary` or `accent.solid`, defined per mode as a
-reference to a palette step. A role may point to a different step in each mode where the two work differently. Role
-names say what a colour is for, never which consumer or person uses it.
+A general UI meaning, such as `text-muted` or `accent`, defined per mode as a reference to a palette step. copper has a
+small, fixed set: backgrounds (`bg`, `bg-alt`, `surface`, `surface-raised`), borders (`border`, the quiet edge of cards
+and dividers, and `border-strong`, the edge that identifies a control), text (`text`, `text-muted`, `text-subtle`),
+`accent`, `on-accent`, `selection` and the states `success`, `warning`, `error`, `info`
+([ADR-0005](docs/adr/0005-named-colours-and-general-roles.md)). A role may point to a different step in each mode where
+the two work differently. Role names say what a colour is for in any interface, never which consumer, domain or person
+uses it.
 
 ### Consumer
 
@@ -79,6 +98,6 @@ committed under `ports/<target>/`. It is never edited by hand; it equals what th
 
 ### Component colour
 
-A colour only one consumer uses, such as a dashboard card's tint or the colour of an app's launcher icon. It stays with
-that consumer and is defined there by reference to palette steps or roles. Once a second consumer needs it, it becomes a
-role.
+A colour of one consumer's own, such as a dashboard card's tint, a calendar's colours or the colour of an app's launcher
+icon. It stays with that consumer and is defined there by reference to **named colours** or roles. What happens when a
+second consumer needs it is decided in [ADR-0005](docs/adr/0005-named-colours-and-general-roles.md).

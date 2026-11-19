@@ -32,8 +32,8 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      # The release is the tag and its notes: the ports will be committed
-      # under ports/, so a consumer pins a tag and needs no attached artifact.
+      # The release is the tag and its notes: the ports are committed under
+      # ports/, so a consumer pins a tag and needs no attached artifact.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           token: ${{ steps.app-token.outputs.token }}

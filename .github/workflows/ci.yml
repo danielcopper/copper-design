@@ -35,7 +35,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           activate-environment: true
       # mise.toml's `setup` task runs the same command and says what each flag is for.
-      - name: Install the locked dev deps
+      - name: Install the locked deps
         run: uv sync --locked --no-build --no-install-project --extra dev
       - name: Run the tests
         run: python -m pytest tests -q
@@ -54,7 +54,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           activate-environment: true
       # mise.toml's `setup` task runs the same command and says what each flag is for.
-      - name: Install the locked dev deps
+      - name: Install the locked deps
         run: uv sync --locked --no-build --no-install-project --extra dev
       - name: ruff check
         run: ruff check .
@@ -62,6 +62,48 @@ jobs:
         run: ruff format --check .
       - name: Type-check (basedpyright)
         run: basedpyright
+
+  # Builds the wheel, installs it into a clean venv as a consumer would, and
+  # runs the generator from there over the checkout: `palette` (the parameter
+  # file to the token files), `render` (the token files and port templates to
+  # the ports and the swatch) and `preview` (the preview template). An unchanged
+  # checkout shows that the wheel carries every data file and that an installed
+  # generator writes exactly what is committed. Its installs are not `setup`'s,
+  # which leaves the project out: the build backend comes from
+  # build-constraints.txt with its hashes, the runtime deps from uv.lock with
+  # theirs, then the wheel goes in without deps (tests/test_ci_install.py pins
+  # every command, `with:` input and key of this job).
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"  # pyproject's requires-python floor
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.10.2"  # mise.toml's uv
+          python-version: "3.12"
+      - name: Build the wheel
+        run: uv build --wheel --out-dir dist --build-constraints build-constraints.txt --require-hashes
+      - name: Install the wheel into a clean venv
+        run: |
+          uv export --locked --no-emit-project --output-file /tmp/runtime.txt
+          uv venv /tmp/clean
+          uv pip install --python /tmp/clean --no-build --require-hashes --requirements /tmp/runtime.txt
+          uv pip install --python /tmp/clean --no-build --no-deps dist/*.whl
+      - name: Run the installed generator over the checkout and compare
+        # From outside the checkout and isolated (-I), so the import cannot
+        # come from the tree; the installed metadata must carry __version__.
+        working-directory: /tmp
+        run: |
+          /tmp/clean/bin/python -I -c "import importlib.metadata as m, copper_design as c; assert c.__file__.startswith('/tmp/clean/'), c.__file__; assert m.version('copper-design') == c.__version__"
+          /tmp/clean/bin/python -I -m copper_design palette --root "$GITHUB_WORKSPACE"
+          /tmp/clean/bin/python -I -m copper_design render --root "$GITHUB_WORKSPACE"
+          /tmp/clean/bin/python -I -m copper_design preview /tmp/preview.html
+          git -C "$GITHUB_WORKSPACE" status --porcelain
+          test -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain)"
 
   markdownlint:
     runs-on: ubuntu-latest
@@ -126,7 +168,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           activate-environment: true
       # mise.toml's `setup` task runs the same command and says what each flag is for.
-      - name: Install the locked dev deps
+      - name: Install the locked deps
         run: uv sync --locked --no-build --no-install-project --extra dev
       - name: Produce Python coverage
         run: python -m pytest tests --cov=copper_design --cov-report=xml -q
@@ -169,7 +211,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           activate-environment: true
       # mise.toml's `setup` task runs the same command and says what each flag is for.
-      - name: Install the locked dev deps
+      - name: Install the locked deps
         run: uv sync --locked --no-build --no-install-project --extra dev
       - name: Produce Python coverage
         run: python -m pytest tests --cov=copper_design --cov-report=xml -q

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "name": "copper",
+  "version": "2025.10",
+  "description": "copper's palette and roles; the mode modifier selects light or dark.",
+  "modifiers": {
+    "mode": {
+      "description": "Light or dark: each has its own palette and its own role values.",
+      "contexts": {
+        "light": [{ "$ref": "palette.light.tokens.json" }, { "$ref": "roles.light.tokens.json" }],
+        "dark": [{ "$ref": "palette.dark.tokens.json" }, { "$ref": "roles.dark.tokens.json" }]
+      }
+    }
+  },
+  "resolutionOrder": [{ "$ref": "#/modifiers/mode" }]
+}
