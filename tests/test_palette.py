@@ -12,8 +12,7 @@ from copper_design import palette, tokens
 
 # The approved palette, all 12 steps of every base colour per mode. It is the
 # prototype's palette it was chosen from, with one deliberate change: light
-# neutral step 10 moved from #726e85 to #6f6b82 (lightness 0.55 to 0.54), so
-# text-subtle reaches 4.5:1 on bg.
+# neutral step 10 moved from #726e85 to #6f6b82 (parameters.toml says why).
 APPROVED: dict[palette.Mode, dict[str, tuple[str, ...]]] = {
     "light": {
         "neutral": (

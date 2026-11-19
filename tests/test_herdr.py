@@ -7,13 +7,29 @@ and an optional ``colors`` that overrides its panel colours by name with
 luminance (Rec. 709 weights over the 8-bit channels) is above one half. This
 docstring is the one description of that format here; the template points to it.
 
-ANSI order: black, red, green, yellow, blue, magenta, cyan, white, then the
-bright eight. Every ANSI colour reaches 3:1 on the terminal background except
-the grey on the background's side (D7): black in dark mode and white in light
-mode are fills close to the background, as in the common schemes, and the
-colours stay readable on them. Each bright colour is lighter than its normal
-one (D8), except light mode's white pair, whose bright twin has to be darker to
-stay readable on a light background.
+The port: the terminal is a surface (a pane on the canvas), so its background
+is the ``surface`` role, and herdr's canvas and chrome are ``bg`` and ``bg-alt``.
+ANSI order: black, red, green, yellow, blue, magenta (violet), cyan (teal),
+white, then the bright eight.
+
+- Every ANSI colour reaches 3:1 on the terminal background, except the grey on
+  the background's side (issue 5, D7): black in dark mode and white in light
+  mode are fills close to the background, as in the common schemes, and the
+  colours stay readable on them.
+- Each bright colour is lighter than its normal one (D8). Dark mode takes the
+  solid steps (9) and, for the bright colours, the text steps (11); yellow and
+  teal lift their solid steps above step 11, so their bright colours take the
+  lifted step 10. Light mode takes the text steps (11) and, for the bright
+  colours, the hovered solid steps (10); yellow's solid steps are too light for
+  3:1, so yellow takes its text steps (12, then 11), and blue's step 10 is
+  darker than its step 11, so bright blue takes step 9.
+- The greys: in dark mode black is the fill (neutral 6), bright black neutral 9,
+  white and bright white neutral 11 and 12; light mode mirrors it, with black and
+  bright black neutral 12 and 11, white the fill (neutral 3) and bright white
+  neutral 9.
+- One pair is the named exception to D8: in light mode bright white is a grey
+  readable on the background (3:1), darker than the white fill, since programs
+  use bright white as text.
 """
 
 import json
@@ -36,7 +52,7 @@ _FILL_GREYS = {
 }
 # (mode, normal slot): why its bright twin may be darker.
 _DARKER_BRIGHT = {
-    ("light", 7): "white is a fill near the light background; a bright white readable on it has to be darker",
+    ("light", 7): "bright white is a grey readable on the background (3:1), darker than the white fill",
 }
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -147,3 +163,11 @@ def test_the_chrome_stands_apart_from_the_terminal(mode: palette.Mode) -> None:
     theme = _theme(mode)
     assert theme["colors"]["chrome"] != theme["background"]
     assert Color(theme["colors"]["chrome"]).luminance() < Color(theme["background"]).luminance()
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_fill_grey_stands_apart_from_the_background(mode: palette.Mode) -> None:
+    # Close to the background, but a fill: equal to it, it would draw nothing.
+    theme = _theme(mode)
+    (fill,) = [theme["ansi"][i] for fill_mode, i in _FILL_GREYS if fill_mode == mode]
+    assert Color(fill).contrast(theme["background"]) >= 1.1

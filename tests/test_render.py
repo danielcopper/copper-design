@@ -104,7 +104,48 @@ def test_a_template_naming_a_missing_colour_names_template_and_mode() -> None:
         render.render(env, "broken.svg.j2", tokens.load("dark"))
 
 
-def test_a_json_template_rendering_no_valid_json_is_refused() -> None:
+def test_a_template_raising_anything_names_template_and_mode() -> None:
+    env = _env_with("broken.svg.j2", "{{ 1 // 0 }}")
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 \(light\): .*division"):
+        render.render(env, "broken.svg.j2", tokens.load("light"))
+
+
+def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _env_with("broken.json.j2", '{"background": {{ c["bg"] }}}')
-    with pytest.raises(render.RenderError, match=r"^broken\.json\.j2 \(light\) rendered no valid JSON"):
-        render.render(env, "broken.json.j2", tokens.load("light"))
+    monkeypatch.setattr(render, "environment", lambda: env)
+    monkeypatch.setattr(render, "OUTPUTS", (("x-{mode}.json", "broken.json.j2"),))
+    with pytest.raises(render.RenderError, match=r"^x-light\.json \(broken\.json\.j2\) is no valid JSON"):
+        render.outputs()
+
+
+def test_a_broken_preview_template_ends_the_run_with_its_message(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    env = _env_with("preview.html.j2", "{{ modes[0].no_such_key }}")
+    monkeypatch.setattr(render, "environment", lambda: env)
+    with pytest.raises(SystemExit) as exit_info:
+        main(["preview", str(tmp_path / "page.html")])
+    assert exit_info.value.code == 1
+    assert capsys.readouterr().err.startswith("error: preview.html.j2 (both modes): ")
+
+
+def test_autoescaping_covers_the_html_and_svg_templates_only() -> None:
+    autoescape = render.environment().autoescape
+    assert callable(autoescape)
+    assert autoescape("preview.html.j2")
+    assert autoescape("swatch.svg.j2")
+    assert not autoescape("herdr.json.j2")
+
+
+def test_the_json_templates_write_every_value_through_tojson() -> None:
+    templates = Path(render.__file__).parent / "templates"
+    for template in templates.glob("*.json.j2"):
+        expressions = re.findall(r"\{\{(.*?)\}\}", template.read_text(encoding="utf-8"))
+        assert expressions, template.name
+        # A value goes through tojson; a quoted literal (a comma between items) needs none.
+        loose = [
+            expression
+            for expression in expressions
+            if not re.search(r"\|\s*tojson\s*$", expression) and not re.fullmatch(r'\s*"[^"]*"\s+if .*', expression)
+        ]
+        assert not loose, f"{template.name}: values not written through tojson: {loose}"

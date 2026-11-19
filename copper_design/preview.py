@@ -5,6 +5,7 @@ caller names and not committed. The contrast checks are copper_design.contrast's
 """
 
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from coloraide import Color
@@ -19,7 +20,7 @@ def simulate(hex_colour: str, kind: str) -> str:
     return Color(hex_colour).filter(kind).convert("srgb").fit("srgb").to_string(hex=True)
 
 
-def _with_label(hex_colour: str, colours: dict[str, str]) -> tuple[str, str]:
+def _with_label(hex_colour: str, colours: Mapping[str, str]) -> tuple[str, str]:
     """A colour and the neutral end (step 1 or 12) that reads best on it."""
     ends = (colours["neutral-1"], colours[f"neutral-{palette.STEPS}"])
     return hex_colour, max(ends, key=lambda end: contrast.ratio(end, hex_colour))
@@ -29,7 +30,7 @@ def mode_data(mode_tokens: tokens.ModeTokens, herdr: dict[str, Any]) -> dict[str
     """Everything the page shows for one mode."""
     colours = mode_tokens.colours
     checks = contrast.checks(colours)
-    named = [*mode_tokens.bases[1:], *contrast.STATES]
+    named = [*(name for name in mode_tokens.bases if name != palette.NEUTRAL), *contrast.STATES]
     return {
         "mode": mode_tokens.mode,
         "c": colours,
@@ -67,4 +68,4 @@ def page() -> str:
         mode_tokens = tokens.load(mode)
         herdr = json.loads(render.render(env, render.HERDR_TEMPLATE, mode_tokens))
         modes.append(mode_data(mode_tokens, herdr))
-    return env.get_template("preview.html.j2").render(modes=modes)
+    return render.render_template(env, "preview.html.j2", "both modes", modes=modes)

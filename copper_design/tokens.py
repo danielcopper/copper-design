@@ -7,17 +7,16 @@ palette step. The resolver file (``copper.resolver.json``) selects the light or
 the dark files by its ``mode`` modifier.
 
 Reading follows the resolver module's stages: the input is checked against the
-modifiers, the sources are merged in resolution order, and only then are the
-references resolved. The reader takes the resolver module's sets, inline
-sources and modifier defaults as well, which copper's own resolver does not
-use, so a resolver that layers other token files under or over copper's reads
-with it too. It takes references within the resolver document and to token
-files beside it, curly-brace references, and opaque colours in sRGB.
+modifier, the selected context's files are merged in order, and only then are
+the references resolved. The reader takes what copper's resolver uses and
+refuses the rest of the resolver module: one modifier whose contexts list token
+files beside the resolver, and a resolution order that is that modifier. Token
+values are opaque colours in sRGB or curly-brace references.
 
 Everything it reads is checked, and anything it does not understand raises a
 TokenError naming the file or the token's path: an unknown ``$`` property, an
-empty group, a token and a group of one name, two paths that the ports would
-spell alike.
+empty group, a name the ports cannot carry, a token and a group of one name,
+two paths that the ports would spell alike.
 """
 
 import json
@@ -30,7 +29,7 @@ from typing import Any
 
 from coloraide import Color
 
-from copper_design.palette import MAIN_STEP, MODES, Mode, Palette, build, load_parameters
+from copper_design.palette import MAIN_STEP, MODES, NEUTRAL, Mode, Palette, build, load_parameters
 
 RESOLVER = "copper.resolver.json"
 _REFERENCE = re.compile(r"^\{([^{}]+)\}$")
@@ -98,69 +97,44 @@ def _read(name: str) -> dict[str, Any]:
     return document
 
 
-def _check_sources(sources: object, where: str) -> None:
-    if not isinstance(sources, list):
-        raise TokenError(f"{RESOLVER}: {where} needs a list of sources")
-    for index, source in enumerate(sources):
-        if not isinstance(source, dict):
-            raise TokenError(f"{RESOLVER}: {where}[{index}] is not an object")
-        if "$ref" in source and not isinstance(source["$ref"], str):
-            raise TokenError(f"{RESOLVER}: {where}[{index}].$ref is not a string")
+_RESOLVER_KEYS = {"$schema", "name", "version", "description", "modifiers", "resolutionOrder"}
+_FILE = re.compile(r"^[A-Za-z0-9_.-]+\.json$")
 
 
-def _check_resolver(resolver: dict[str, Any]) -> None:
-    """The resolver document's shape: version, sets, modifiers and resolution order."""
+def _context_files(context: str, sources: object) -> list[str]:
+    """A context's token files: a non-empty list of ``{"$ref": "<file>.json"}`` beside the resolver."""
+    files: list[str] = []
+    for source in sources if isinstance(sources, list) else [None]:
+        ref = source.get("$ref") if isinstance(source, dict) and set(source) == {"$ref"} else None
+        if not isinstance(ref, str) or not _FILE.match(ref):
+            raise TokenError(f"{RESOLVER}: context {context!r} needs a list of token files, not {source!r}")
+        files.append(ref)
+    if not files:
+        raise TokenError(f"{RESOLVER}: context {context!r} lists no token files")
+    return files
+
+
+def _resolver() -> tuple[str, dict[str, list[str]]]:
+    """The resolver's one modifier: its name and each context's token files, in order."""
+    resolver = _read(RESOLVER)
+    unknown = sorted(set(resolver) - _RESOLVER_KEYS)
+    if unknown:
+        raise TokenError(f"{RESOLVER}: copper's resolver holds no {unknown}")
     if resolver.get("version") != "2025.10":
         raise TokenError(f"{RESOLVER}: version must be 2025.10")
-    sets = resolver.get("sets", {})
-    modifiers = resolver.get("modifiers", {})
-    if not isinstance(sets, dict) or not isinstance(modifiers, dict):
-        raise TokenError(f"{RESOLVER}: sets and modifiers must be objects")
-    for name, body in sets.items():
-        if not isinstance(body, dict):
-            raise TokenError(f"{RESOLVER}: set {name!r} is not an object")
-        _check_sources(body.get("sources"), f"set {name!r}")
-    for name, body in modifiers.items():
-        contexts = body.get("contexts") if isinstance(body, dict) else None
-        if not isinstance(contexts, dict) or not contexts:
-            raise TokenError(f"{RESOLVER}: modifier {name!r} needs a non-empty contexts object")
-        for context, sources in contexts.items():
-            _check_sources(sources, f"modifier {name!r} context {context!r}")
-        if "default" in body and body["default"] not in contexts:
-            raise TokenError(f"{RESOLVER}: modifier {name!r} has a default that is none of its contexts")
-    order = resolver.get("resolutionOrder")
-    if not isinstance(order, list) or not order:
-        raise TokenError(f"{RESOLVER}: resolutionOrder needs a non-empty list")
-    for index, item in enumerate(order):
-        if not isinstance(item, dict) or not isinstance(item.get("$ref"), str):
-            raise TokenError(f"{RESOLVER}: resolutionOrder[{index}] is not a reference to a set or modifier")
-
-
-def _pointer(document: dict[str, Any], pointer: str) -> Any:
-    node: Any = document
-    for part in pointer.removeprefix("#/").split("/"):
-        if not isinstance(node, dict) or part not in node:
-            raise TokenError(f"{RESOLVER}: {pointer} points nowhere")
-        node = node[part]
-    return node
-
-
-def _sources(resolver: dict[str, Any], sources: list[Any], sets: tuple[str, ...] = ()) -> list[dict[str, Any]]:
-    """Token documents from a set's or a context's sources, in order; ``sets`` are the sets being expanded."""
-    documents: list[dict[str, Any]] = []
-    for source in sources:
-        ref = source.get("$ref")
-        if ref is None:
-            documents.append(source)
-        elif ref.startswith("#/sets/"):
-            if ref in sets:
-                raise TokenError(f"{RESOLVER}: set cycle: {' -> '.join((*sets, ref))}")
-            documents.extend(_sources(resolver, _pointer(resolver, ref)["sources"], (*sets, ref)))
-        elif ref.startswith("#/"):
-            raise TokenError(f"{RESOLVER}: a source may point at a set or a file, not {ref}")
-        else:
-            documents.append(_read(ref))
-    return documents
+    modifiers = resolver.get("modifiers")
+    if not isinstance(modifiers, dict) or len(modifiers) != 1:
+        raise TokenError(f"{RESOLVER}: needs exactly one modifier")
+    ((name, modifier),) = modifiers.items()
+    if not isinstance(modifier, dict) or set(modifier) - {"description", "contexts"}:
+        raise TokenError(f"{RESOLVER}: modifier {name!r} holds only a description and its contexts")
+    contexts = modifier.get("contexts")
+    if not isinstance(contexts, dict) or not contexts:
+        raise TokenError(f"{RESOLVER}: modifier {name!r} needs a non-empty contexts object")
+    files_by_context = {context: _context_files(context, sources) for context, sources in contexts.items()}
+    if resolver.get("resolutionOrder") != [{"$ref": f"#/modifiers/{name}"}]:
+        raise TokenError(f"{RESOLVER}: resolutionOrder must be the one modifier, #/modifiers/{name}")
+    return name, files_by_context
 
 
 def _is_token(node: object) -> bool:
@@ -185,42 +159,22 @@ def _merge(into: dict[str, Any], document: dict[str, Any], prefix: str = "") -> 
             _merge(old, value, f"{prefix}{key}.")
 
 
-def _check_inputs(modifiers: dict[str, Any], inputs: Mapping[str, object]) -> None:
-    """The input names declared modifiers and one of their contexts, as a string (the resolver module's rules)."""
-    for name, context in inputs.items():
-        if name not in modifiers:
-            raise TokenError(f"unknown modifier {name!r}")
-        if not isinstance(context, str):
-            raise TokenError(f"input for modifier {name!r} must be a string, not {context!r}")
-        if context not in modifiers[name]["contexts"]:
-            raise TokenError(f"invalid context {context!r} for modifier {name!r}")
-
-
-def _selected(resolver: dict[str, Any], ref: str, inputs: dict[str, str]) -> list[dict[str, Any]]:
-    """The token documents one resolution-order item contributes: a set's, or a modifier's selected context's."""
-    if ref.startswith("#/sets/"):
-        return _sources(resolver, _pointer(resolver, ref)["sources"], (ref,))
-    if not ref.startswith("#/modifiers/"):
-        raise TokenError(f"{RESOLVER}: resolutionOrder refers to {ref}, not to a set or modifier")
-    name = ref.removeprefix("#/modifiers/")
-    modifier = _pointer(resolver, ref)
-    context = inputs.get(name, modifier.get("default"))
-    if context is None:
-        raise TokenError(f"no input for modifier {name!r}, which has no default")
-    return _sources(resolver, modifier["contexts"][context])
-
-
-def merged(inputs: dict[str, str]) -> dict[str, Any]:
-    """The token tree the resolver selects for the given inputs, references not yet resolved."""
-    resolver = _read(RESOLVER)
-    _check_resolver(resolver)
-    _check_inputs(resolver.get("modifiers", {}), inputs)
+def merged(inputs: Mapping[str, object]) -> dict[str, Any]:
+    """The token tree the resolver selects for the given input, references not yet resolved."""
+    name, contexts = _resolver()
+    unknown = sorted(set(inputs) - {name})
+    if unknown:
+        raise TokenError(f"unknown modifier {unknown[0]!r}")
+    if name not in inputs:
+        raise TokenError(f"no input for modifier {name!r}")
+    context = inputs[name]
+    if not isinstance(context, str):
+        raise TokenError(f"input for modifier {name!r} must be a string, not {context!r}")
+    if context not in contexts:
+        raise TokenError(f"invalid context {context!r} for modifier {name!r}")
     tree: dict[str, Any] = {}
-    for item in resolver["resolutionOrder"]:
-        for document in _selected(resolver, item["$ref"], inputs):
-            _merge(tree, document)
-    if not tree:
-        raise TokenError(f"{RESOLVER}: selects no tokens for {inputs}")
+    for file in contexts[context]:
+        _merge(tree, _read(file))
     return tree
 
 
@@ -247,6 +201,22 @@ def _own_type(node: dict[str, Any], where: str, inherited: str | None) -> str | 
     return value
 
 
+_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+"""copper's token and group names: lowercase letters and digits, words joined by hyphens, as the ports spell them."""
+
+_PROPERTY_TYPES: dict[str, tuple[type, ...]] = {
+    "$description": (str,),
+    "$extensions": (dict,),
+    "$deprecated": (bool, str),
+}
+
+
+def _check_properties(node: dict[str, Any], where: str) -> None:
+    for key, kinds in _PROPERTY_TYPES.items():
+        if key in node and not isinstance(node[key], kinds):
+            raise TokenError(f"{where}: {key} must be {' or '.join(kind.__name__ for kind in kinds)}")
+
+
 def flatten(tree: dict[str, Any]) -> dict[str, Token]:
     """Every token of a tree by path, each with its type inherited from its groups."""
     tokens: dict[str, Token] = {}
@@ -255,6 +225,7 @@ def flatten(tree: dict[str, Any]) -> dict[str, Token]:
         unknown = sorted(set(node) - _TOKEN_KEYS)
         if unknown:
             raise TokenError(f"{path}: a token cannot hold {unknown}")
+        _check_properties(node, path)
         tokens[path] = Token(path, _own_type(node, path, group_type), node["$value"])
 
     def walk(group: dict[str, Any], prefix: str, inherited: str | None) -> None:
@@ -266,13 +237,16 @@ def flatten(tree: dict[str, Any]) -> dict[str, Token]:
         children = [name for name in group if not name.startswith("$") or name == _ROOT]
         if not children:
             raise TokenError(f"{where}: an empty group")
+        _check_properties(group, where)
         for name in children:
             node = group[name]
             path = f"{prefix}{name}"
             if not isinstance(node, dict):
                 raise TokenError(f"{path}: neither a token nor a group")
-            if any(char in name for char in "{}."):
-                raise TokenError(f"{path}: a name may not hold '{{', '}}' or '.'")
+            if name == _ROOT and not prefix:
+                raise TokenError(f"{path}: a root token belongs in a group")
+            if name != _ROOT and not _NAME.match(name):
+                raise TokenError(f"{path!r}: a name is lowercase letters and digits, words joined by hyphens")
             if "$value" in node:
                 token(node, path, group_type)
             elif name == _ROOT:
@@ -350,11 +324,11 @@ class ModeTokens:
     """One mode's tokens, resolved."""
 
     mode: Mode
-    colours: dict[str, str]
+    colours: Mapping[str, str]
     """Every colour by its port name, as ``#rrggbb``."""
     bases: tuple[str, ...]
     """The base colours (the palette's groups), in palette order, the neutral first."""
-    roles: dict[str, str]
+    roles: Mapping[str, str]
     """Every role (a top-level token) and the path it refers to."""
 
 
@@ -374,10 +348,18 @@ def load(mode: Mode) -> ModeTokens:
         paths[name] = path
         colours[name] = check_colour(path, token.value)
     bases = tuple(name for name, node in tree.items() if not _is_token(node))
-    roles = {name: flat[name].reference or "" for name, node in tree.items() if _is_token(node)}
+    if not bases or bases[0] != NEUTRAL:
+        raise TokenError(f"the palette must start with the {NEUTRAL}, not {bases[:1]}")
+    roles: dict[str, str] = {}
+    for name, node in tree.items():
+        if _is_token(node):
+            reference = flat[name].reference
+            if reference is None:
+                raise TokenError(f"{name}: a role is a reference to a palette step, not {node['$value']!r}")
+            roles[name] = reference
     return ModeTokens(mode, colours, bases, roles)
 
 
-def colours(mode: Mode) -> dict[str, str]:
+def colours(mode: Mode) -> Mapping[str, str]:
     """One mode's colours by the names the ports use, as ``#rrggbb``."""
     return load(mode).colours

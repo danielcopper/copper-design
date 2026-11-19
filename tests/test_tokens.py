@@ -119,10 +119,10 @@ def test_the_resolver_refuses_an_input_it_does_not_declare() -> None:
         tokens.merged({"mode": "dim"})
     with pytest.raises(tokens.TokenError, match="unknown modifier 'theme'"):
         tokens.merged({"mode": "light", "theme": "light"})
-    with pytest.raises(tokens.TokenError, match="no input for modifier 'mode', which has no default"):
+    with pytest.raises(tokens.TokenError, match="no input for modifier 'mode'"):
         tokens.merged({})
     with pytest.raises(tokens.TokenError, match="input for modifier 'mode' must be a string"):
-        tokens.merged(json.loads('{"mode": 1}'))
+        tokens.merged({"mode": 1})
 
 
 _COLOUR = {"colorSpace": "srgb", "components": [1, 0, 0], "hex": "#ff0000"}
@@ -164,16 +164,20 @@ def test_a_reference_to_another_type_is_refused() -> None:
         ({"red": {"$type": 1, "1": {"$value": _COLOUR}}}, "red: $type must be a string"),
         ({"red": {"$root": {"$type": "color"}}}, "red.$root: a root token needs a $value"),
         ({"red": 5}, "red: neither a token nor a group"),
+        ({"red.1": {"$type": "color", "$value": _COLOUR}}, "'red.1': a name is lowercase letters and digits"),
+        ({"Red": {"1": {"$value": _COLOUR}}}, "'Red': a name is lowercase"),
+        ({"": {"1": {"$value": _COLOUR}}}, "'': a name is lowercase"),
+        ({"bg alt": {"$value": "{red.1}"}}, "'bg alt': a name is lowercase"),
+        ({"red": {"1": {"$value": _COLOUR}, "{x}": {"$value": _COLOUR}}}, "'red.{x}': a name is lowercase"),
+        ({"$root": {"$value": _COLOUR}}, "$root: a root token belongs in a group"),
+        ({"red": {"$description": 5, "1": {"$value": _COLOUR}}}, "red: $description must be str"),
+        ({"red": {"1": {"$value": _COLOUR, "$extensions": []}}}, "red.1: $extensions must be dict"),
+        ({"red": {"1": {"$value": _COLOUR, "$deprecated": 1}}}, "red.1: $deprecated must be bool or str"),
     ],
 )
 def test_a_tree_that_breaks_the_format_is_refused(tree: dict[str, Any], message: str) -> None:
     with pytest.raises(tokens.TokenError, match=re.escape(message)):
         tokens.flatten(tree)
-
-
-def test_a_name_with_a_period_is_refused() -> None:
-    with pytest.raises(tokens.TokenError, match=r"red\.1: a name may not hold"):
-        tokens.flatten({"red.1": {"$type": "color", "$value": _COLOUR}})
 
 
 @pytest.mark.parametrize(
@@ -213,30 +217,45 @@ def _colour(red: float) -> dict[str, Any]:
     return {"$type": "color", "$value": {"colorSpace": "srgb", "components": [red, 0, 0]}}
 
 
+_NEUTRAL = {"neutral": {"$type": "color", "1": {"$value": _COLOUR}}}
+
 type WriteResolver = Callable[..., None]
+
+
+def _resolver(**contexts: list[str]) -> dict[str, Any]:
+    """copper's resolver shape: one modifier `mode` whose contexts list token files."""
+    return {
+        "version": "2025.10",
+        "modifiers": {
+            "mode": {"contexts": {name: [{"$ref": file} for file in files] for name, files in contexts.items()}}
+        },
+        "resolutionOrder": [{"$ref": "#/modifiers/mode"}],
+    }
 
 
 @pytest.fixture
 def resolver_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> WriteResolver:
-    """A token directory of the test's own: the fixture writes its resolver and token files."""
+    """A token directory of the test's own: the fixture writes its resolver and the token files named."""
     monkeypatch.setattr(tokens, "directory", lambda: tmp_path)
 
-    def write(resolver: dict[str, Any], **files: object) -> None:
-        (tmp_path / tokens.RESOLVER).write_text(json.dumps({"version": "2025.10", **resolver}), encoding="utf-8")
-        for name, document in files.items():
+    def write(resolver: object, **documents: object) -> None:
+        (tmp_path / tokens.RESOLVER).write_text(json.dumps(resolver), encoding="utf-8")
+        for name, document in documents.items():
             (tmp_path / f"{name}.json").write_text(json.dumps(document), encoding="utf-8")
 
     return write
 
 
-def test_sources_merge_group_by_group(resolver_dir: WriteResolver) -> None:
+def test_a_contexts_files_merge_in_order_group_by_group(resolver_dir: WriteResolver) -> None:
     resolver_dir(
-        {
-            "sets": {"s": {"sources": [{"red": {"1": _colour(0.1)}}, {"red": {"2": _colour(0.2)}}]}},
-            "resolutionOrder": [{"$ref": "#/sets/s"}],
-        },
+        _resolver(light=["a.json", "b.json"], dark=["b.json"]),
+        a={"red": {"1": _colour(0.1)}, "x": _colour(0.1)},
+        b={"red": {"2": _colour(0.2)}, "x": _colour(0.3)},
     )
-    assert set(tokens.merged({})["red"]) == {"1", "2"}
+    tree = tokens.merged({"mode": "light"})
+    assert set(tree["red"]) == {"1", "2"}
+    assert tree["x"]["$value"]["components"][0] == 0.3
+    assert set(tokens.merged({"mode": "dark"})["red"]) == {"2"}
 
 
 @pytest.mark.parametrize(
@@ -249,138 +268,81 @@ def test_sources_merge_group_by_group(resolver_dir: WriteResolver) -> None:
 def test_a_token_and_a_group_of_one_name_do_not_merge(
     resolver_dir: WriteResolver, first: dict[str, Any], second: dict[str, Any]
 ) -> None:
-    resolver_dir({"sets": {"s": {"sources": [first, second]}}, "resolutionOrder": [{"$ref": "#/sets/s"}]})
+    resolver_dir(_resolver(light=["a.json", "b.json"], dark=["a.json"]), a=first, b=second)
     with pytest.raises(tokens.TokenError, match="bg: a token and a group of the same name"):
-        tokens.merged({})
-
-
-def _mode_resolver(document: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "modifiers": {"mode": {"contexts": {"light": [document], "dark": [document]}}},
-        "resolutionOrder": [{"$ref": "#/modifiers/mode"}],
-    }
-
-
-def test_two_paths_the_ports_spell_alike_are_refused(resolver_dir: WriteResolver) -> None:
-    resolver_dir(_mode_resolver({"blue": {"9": _colour(0.5)}, "blue-9": _colour(0.6)}))
-    with pytest.raises(tokens.TokenError, match=re.escape("blue.9 and blue-9 are both 'blue-9' in the ports")):
-        tokens.load("light")
+        tokens.merged({"mode": "light"})
 
 
 @pytest.mark.parametrize(
     ("document", "message"),
     [
-        ({"size": {"$value": 4}}, "size: an untyped token; copper holds colours only"),
-        ({"size": {"$type": "dimension", "$value": {"value": 4, "unit": "px"}}}, "size: a dimension token"),
+        (
+            _NEUTRAL | {"neutral-1": {"$value": "{neutral.1}"}},
+            "neutral.1 and neutral-1 are both 'neutral-1' in the ports",
+        ),
+        (_NEUTRAL | {"size": {"$value": 4}}, "size: an untyped token; copper holds colours only"),
+        (_NEUTRAL | {"size": {"$type": "dimension", "$value": {"value": 4, "unit": "px"}}}, "size: a dimension token"),
+        (_NEUTRAL | {"bg": _colour(0.5)}, "bg: a role is a reference to a palette step"),
+        ({"blue": {"$type": "color", "1": {"$value": _COLOUR}}} | _NEUTRAL, "the palette must start with the neutral"),
     ],
 )
-def test_a_token_that_is_no_colour_is_refused(
+def test_a_mode_the_ports_cannot_take_is_refused(
     resolver_dir: WriteResolver, document: dict[str, Any], message: str
 ) -> None:
-    resolver_dir(_mode_resolver(document))
-    with pytest.raises(tokens.TokenError, match=message):
+    resolver_dir(_resolver(light=["t.json"], dark=["t.json"]), t=document)
+    with pytest.raises(tokens.TokenError, match=re.escape(message)):
         tokens.load("light")
 
 
-def test_sets_and_contexts_merge_in_order_with_the_last_token_winning(resolver_dir: WriteResolver) -> None:
-    resolver_dir(
-        {
-            "sets": {"base": {"sources": [{"$ref": "base.json"}, {"b": _colour(0.2)}]}},
-            "modifiers": {
-                "mode": {"contexts": {"light": [{"a": _colour(0.5)}], "dark": [{"a": _colour(0.9)}]}, "default": "dark"}
-            },
-            "resolutionOrder": [{"$ref": "#/sets/base"}, {"$ref": "#/modifiers/mode"}],
-        },
-        base={"a": _colour(0.1), "b": _colour(0.1), "c": _colour(0.1)},
-    )
-    tree = tokens.merged({})
-    assert {name: token["$value"]["components"][0] for name, token in tree.items()} == {"a": 0.9, "b": 0.2, "c": 0.1}
-    assert tokens.merged({"mode": "light"})["a"]["$value"]["components"][0] == 0.5
+_GOOD = _resolver(light=["t.json"], dark=["t.json"])
 
 
 @pytest.mark.parametrize(
     ("resolver", "message"),
     [
-        ({"version": "2025.06", "resolutionOrder": []}, "version must be 2025.10"),
-        ({}, "resolutionOrder needs a non-empty list"),
-        ({"resolutionOrder": []}, "resolutionOrder needs a non-empty list"),
-        ({"resolutionOrder": ["#/sets/s"]}, "resolutionOrder[0] is not a reference to a set or modifier"),
-        ({"resolutionOrder": [{"$ref": 3}]}, "resolutionOrder[0] is not a reference to a set or modifier"),
-        ({"resolutionOrder": [{"$ref": "#/tokens/x"}]}, "resolutionOrder refers to #/tokens/x"),
-        ({"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {}}}, "set 's' needs a list of sources"),
+        (_GOOD | {"version": "2025.06"}, "version must be 2025.10"),
+        (_GOOD | {"sets": {}}, "copper's resolver holds no ['sets']"),
+        ({k: v for k, v in _GOOD.items() if k != "modifiers"}, "needs exactly one modifier"),
+        (_GOOD | {"modifiers": {**_GOOD["modifiers"], "size": {"contexts": {"a": []}}}}, "needs exactly one modifier"),
         (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": ["a.json"]}}},
-            "set 's'[0] is not an object",
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": "t.json"}]}, "default": "light"}}},
+            "holds only a description and its contexts",
+        ),
+        (_GOOD | {"modifiers": {"mode": {"contexts": {}}}}, "modifier 'mode' needs a non-empty contexts object"),
+        (
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": "t.json"}}}},
+            "context 'light' needs a list of token files",
         ),
         (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": 1}]}}},
-            "set 's'[0].$ref is not a string",
-        ),
-        ({"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": []}, "sets and modifiers must be objects"),
-        ({"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": 1}}, "set 's' is not an object"),
-        (
-            {"resolutionOrder": [{"$ref": "#/modifiers/m"}], "modifiers": {"m": {}}},
-            "modifier 'm' needs a non-empty contexts",
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"red": _colour(0.1)}]}}}},
+            "context 'light' needs a list of token files",
         ),
         (
-            {"resolutionOrder": [{"$ref": "#/modifiers/m"}], "modifiers": {"m": {"contexts": {}}}},
-            "modifier 'm' needs a non-empty contexts",
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": "#/sets/a"}]}}}},
+            "context 'light' needs a list of token files",
         ),
         (
-            {
-                "resolutionOrder": [{"$ref": "#/modifiers/m"}],
-                "modifiers": {"m": {"contexts": {"a": [], "b": []}, "default": "c"}},
-            },
-            "modifier 'm' has a default that is none of its contexts",
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": 1}]}}}},
+            "context 'light' needs a list of token files",
         ),
-        (
-            {
-                "resolutionOrder": [{"$ref": "#/modifiers/m"}],
-                "modifiers": {"m": {"contexts": {"a": [], "b": []}, "default": "a"}},
-            },
-            "selects no tokens",
-        ),
-        (
-            {
-                "resolutionOrder": [{"$ref": "#/sets/a"}],
-                "sets": {"a": {"sources": [{"$ref": "#/sets/b"}]}, "b": {"sources": [{"$ref": "#/sets/a"}]}},
-            },
-            "set cycle: #/sets/a -> #/sets/b -> #/sets/a",
-        ),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "bad.json"}]}}},
-            "bad.json: cannot be read as JSON",
-        ),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "latin.json"}]}}},
-            "latin.json: cannot be read as JSON",
-        ),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "folder"}]}}},
-            "folder: cannot be read as JSON",
-        ),
-        ({"resolutionOrder": [{"$ref": "#/sets/missing"}]}, "#/sets/missing points nowhere"),
-        ({"resolutionOrder": [{"name": "inline", "type": "set", "sources": []}]}, "not a reference to a set"),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "absent.json"}]}}},
-            "absent.json: no such token file",
-        ),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "#/modifiers/m"}]}}},
-            "a source may point at a set or a file, not #/modifiers/m",
-        ),
-        (
-            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "list.json"}]}}},
-            "list.json: not a JSON object",
-        ),
+        (_GOOD | {"modifiers": {"mode": {"contexts": {"light": []}}}}, "context 'light' lists no token files"),
+        (_GOOD | {"resolutionOrder": []}, "resolutionOrder must be the one modifier, #/modifiers/mode"),
+        (_GOOD | {"resolutionOrder": [{"$ref": "#/sets/s"}]}, "resolutionOrder must be the one modifier"),
+        (_GOOD | {"resolutionOrder": [{"$ref": "#/modifiers/mode"}] * 2}, "resolutionOrder must be the one modifier"),
+        (_resolver(light=["absent.json"], dark=["t.json"]), "absent.json: no such token file"),
+        (_resolver(light=["bad.json"], dark=["t.json"]), "bad.json: cannot be read as JSON"),
+        (_resolver(light=["latin.json"], dark=["t.json"]), "latin.json: cannot be read as JSON"),
+        (_resolver(light=["folder.json"], dark=["t.json"]), "folder.json: cannot be read as JSON"),
+        (_resolver(light=["list.json"], dark=["t.json"]), "list.json: not a JSON object"),
+        ([], f"{tokens.RESOLVER}: not a JSON object"),
     ],
 )
-def test_a_broken_resolver_is_refused(
-    resolver_dir: WriteResolver, tmp_path: Path, resolver: dict[str, Any], message: str
+def test_a_resolver_copper_does_not_use_is_refused(
+    resolver_dir: WriteResolver, tmp_path: Path, resolver: object, message: str
 ) -> None:
-    resolver_dir(resolver, list=[])
+    resolver_dir(resolver, t=_NEUTRAL, list=[])
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     (tmp_path / "latin.json").write_bytes(b'{"x": "\xe9"}')
-    (tmp_path / "folder").mkdir()
+    (tmp_path / "folder.json").mkdir()
     with pytest.raises(tokens.TokenError, match=re.escape(message)):
-        tokens.merged({})
+        tokens.merged({"mode": "light"})

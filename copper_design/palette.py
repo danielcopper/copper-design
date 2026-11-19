@@ -12,14 +12,15 @@ ParameterError that names the key's path.
 
 import re
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from coloraide import Color
 
 type Mode = Literal["light", "dark"]
-MODES: tuple[Mode, ...] = ("light", "dark")
+MODES: tuple[Mode, ...] = get_args(Mode.__value__)
 STEPS = 12
 MAIN_STEP = 9
 """The step a base colour's plain name stands for: its solid fill at rest."""
@@ -58,19 +59,19 @@ class Hue:
     hue: float
     chroma: float
     """The peak chroma, which the curve's shares scale."""
-    lightness: dict[Mode, dict[int, float]]
+    lightness: Mapping[Mode, Mapping[int, float]]
     """Per mode, the steps whose lightness leaves the shared curve."""
 
 
 @dataclass(frozen=True)
 class Parameters:
-    neutral: dict[Mode, NeutralCurves]
-    curve: dict[Mode, Curve]
-    hues: dict[str, Hue]
+    neutral: Mapping[Mode, NeutralCurves]
+    curve: Mapping[Mode, Curve]
+    hues: Mapping[str, Hue]
 
 
-# The ranges a value may take: OKLCH lightness 0-1, chroma 0-0.4 (beyond any
-# display gamut), hue in degrees, and a chroma share up to twice the peak.
+# The ranges a value may take: OKLCH lightness 0-1, chroma 0-0.4 (beyond sRGB
+# and Display P3), hue in degrees, and a chroma share up to twice the peak.
 _LIGHTNESS = (0.0, 1.0)
 _CHROMA = (0.0, 0.4)
 _HUE = (0.0, 360.0)
@@ -149,10 +150,9 @@ def parse(raw: dict[str, Any]) -> Parameters:
 
 def load_parameters() -> Parameters:
     """The parameter file shipped with the package, checked."""
-    text = files("copper_design").joinpath(PARAMETER_FILE).read_text(encoding="utf-8")
     try:
-        raw = tomllib.loads(text)
-    except tomllib.TOMLDecodeError as error:
+        raw = tomllib.loads(files("copper_design").joinpath(PARAMETER_FILE).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
         raise ParameterError(f"{PARAMETER_FILE}: {error}") from error
     return parse(raw)
 

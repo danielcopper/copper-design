@@ -1,25 +1,7 @@
 {#-
-  A herdr terminal theme; tests/test_herdr.py says what herdr reads and holds
-  the rendered file to it.
-
-  The terminal is a surface (a pane on the canvas), so its background is
-  `surface`, and herdr's canvas and chrome are `bg` and `bg-alt`. ANSI order:
-  black, red, green, yellow, blue, magenta (violet), cyan (teal), white, then
-  the bright eight.
-
-  The colours reach 3:1 on the terminal background, and each bright colour is
-  lighter than its normal one. Dark mode takes the solid steps (9) and, for the
-  bright ones, the text steps (11); yellow and teal lift their solid steps
-  above step 11, so their bright colours take the lifted step 10. Light mode
-  takes the text steps (11) and, for the bright ones, the hovered solid steps
-  (10); yellow's solid steps are too light for 3:1, so yellow takes its text
-  steps (12, then 11), and blue's step 10 is darker than its step 11, so
-  bright blue takes step 9.
-
-  As in the common schemes, the grey on the background's side is a fill close
-  to the background, behind the colours (a status bar's black on green): black
-  in dark mode, white in light mode. Its bright twin and the greys on the far
-  side are text steps that stay readable on the background.
+  A herdr terminal theme. tests/test_herdr.py's docstring holds the rules this
+  file follows (what herdr reads, which steps the terminal and ANSI colours take
+  and why), and the tests hold the rendered file to them.
 -#}
 {%- if mode == "light" -%}
 {%- set ansi = [

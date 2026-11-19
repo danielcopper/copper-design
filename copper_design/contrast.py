@@ -6,6 +6,7 @@ short is an exception with its reason. The preview shows these checks, and
 tests/test_contrast.py holds the tokens to them.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -41,16 +42,17 @@ NEEDS: dict[Kind, float] = {"text": 4.5, "graphic": 3.0}
 BACKDROPS = ("bg", "surface")
 """The backgrounds every text and graphic role is measured on."""
 
-ON = (("on-accent", "accent", 4.5), ("text", "selection", 4.5))
-"""Roles measured against the role they sit on: foreground, background, need."""
+SITS_ON = (("on-accent", "accent"), ("text", "selection"))
+"""Text measured against the role it sits on, with the text need: every on-fill role on its fill, and text on
+selection."""
 
+_DECORATIVE_BORDER = (
+    "border is the quiet, decorative edge of cards and dividers; WCAG 1.4.11 asks 3:1 only of an edge that identifies "
+    "a control, which is border-strong's job."
+)
 EXCEPTIONS: dict[tuple[str, str], str] = {
-    (role, backdrop): (
-        "border is the quiet, decorative edge of cards and dividers; WCAG 1.4.11 asks 3:1 only of an edge that "
-        "identifies a control, which is border-strong's job."
-    )
-    for role in ("border",)
-    for backdrop in BACKDROPS
+    ("border", "bg"): _DECORATIVE_BORDER,
+    ("border", "surface"): _DECORATIVE_BORDER,
 }
 """(role, backdrop) pairs that may fall short, in both modes, and why."""
 
@@ -77,7 +79,7 @@ def ratio(foreground: str, background: str) -> float:
     return Color(foreground).contrast(background)
 
 
-def checks(colours: dict[str, str]) -> list[Check]:
+def checks(colours: Mapping[str, str]) -> list[Check]:
     """Every contrast check for one mode's colours, in role order."""
     result = [
         Check(role, backdrop, NEEDS[kind], ratio(colours[role], colours[backdrop]))
@@ -85,5 +87,5 @@ def checks(colours: dict[str, str]) -> list[Check]:
         if kind in NEEDS
         for backdrop in BACKDROPS
     ]
-    result += [Check(fg, bg, need, ratio(colours[fg], colours[bg])) for fg, bg, need in ON]
+    result += [Check(fg, bg, NEEDS["text"], ratio(colours[fg], colours[bg])) for fg, bg in SITS_ON]
     return result
