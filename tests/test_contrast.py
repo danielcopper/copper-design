@@ -47,6 +47,8 @@ def test_every_role_reaches_its_contrast(mode: palette.Mode) -> None:
         if not c.passes and not c.exception
     ]
     assert not unexcused, f"{mode}: {unexcused}"
+    on_fill = [c for c in checks if (c.foreground, c.background) in contrast.SITS_ON]
+    assert [c.need for c in on_fill] == [contrast.NEEDS["text"]] * len(contrast.SITS_ON) == [4.5] * 2
     stale = [(c.foreground, c.background) for c in checks if c.exception and c.passes]
     assert not stale, f"{mode}: these exceptions reach their contrast now; drop them: {stale}"
 

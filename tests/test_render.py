@@ -1,12 +1,13 @@
 """The committed ports and the README swatch equal what the generator renders, and the command line writes them."""
 
+import json
 import re
 from pathlib import Path
 
 import pytest
 from jinja2 import ChoiceLoader, DictLoader, Environment, PackageLoader
 
-from copper_design import palette, render, tokens
+from copper_design import contrast, palette, preview, render, tokens
 from copper_design.__main__ import main
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -100,13 +101,19 @@ def _env_with(template: str, text: str) -> Environment:
 
 def test_a_template_naming_a_missing_colour_names_template_and_mode() -> None:
     env = _env_with("broken.svg.j2", '{{ c["no-such-role"] }}')
-    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 \(dark\): .*no-such-role"):
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 1 \(dark\): UndefinedError: .*no-such-role"):
+        render.render(env, "broken.svg.j2", tokens.load("dark"))
+
+
+def test_a_template_error_names_its_line() -> None:
+    env = _env_with("broken.svg.j2", "<svg>\n\n{{ 1 // 0 }}")
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 3 \(dark\): ZeroDivisionError: "):
         render.render(env, "broken.svg.j2", tokens.load("dark"))
 
 
 def test_a_template_raising_anything_names_template_and_mode() -> None:
     env = _env_with("broken.svg.j2", "{{ 1 // 0 }}")
-    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 \(light\): .*division"):
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 1 \(light\): ZeroDivisionError: division"):
         render.render(env, "broken.svg.j2", tokens.load("light"))
 
 
@@ -126,7 +133,7 @@ def test_a_broken_preview_template_ends_the_run_with_its_message(
     with pytest.raises(SystemExit) as exit_info:
         main(["preview", str(tmp_path / "page.html")])
     assert exit_info.value.code == 1
-    assert capsys.readouterr().err.startswith("error: preview.html.j2 (both modes): ")
+    assert capsys.readouterr().err.startswith("error: preview.html.j2 line 1 (both modes): UndefinedError: ")
 
 
 def test_autoescaping_covers_the_html_and_svg_templates_only() -> None:
@@ -137,15 +144,45 @@ def test_autoescaping_covers_the_html_and_svg_templates_only() -> None:
     assert not autoescape("herdr.json.j2")
 
 
+_LITERAL_CHOICE = r'\s*"[^"]*"\s+if\s+[^"]*?(?:\s+else\s+"[^"]*")?\s*'
+
+
+def _not_through_tojson(text: str) -> list[str]:
+    """The expressions of a JSON template that write a value without tojson.
+
+    A value goes through tojson; a quoted literal, alone or chosen between two
+    quoted literals (a comma between items), needs none. Expressions may span lines.
+    """
+    expressions = re.findall(r"\{\{(.*?)\}\}", text, re.DOTALL)
+    return [
+        expression
+        for expression in expressions
+        if not re.search(r"\|\s*tojson\s*$", expression) and not re.fullmatch(_LITERAL_CHOICE, expression)
+    ]
+
+
+def test_the_tojson_guard_sees_every_value() -> None:
+    assert not _not_through_tojson('{{ c["bg"] | tojson }}{{ "," if not loop.last }}')
+    assert not _not_through_tojson('{{ "," if not loop.last else "" }}')
+    assert _not_through_tojson('{{ c["bg"] }}') == [' c["bg"] ']
+    assert _not_through_tojson('{{ "x" if a else c["bg"] }}')
+    assert _not_through_tojson('{{\n  c["bg"]\n}}')
+
+
 def test_the_json_templates_write_every_value_through_tojson() -> None:
     templates = Path(render.__file__).parent / "templates"
-    for template in templates.glob("*.json.j2"):
-        expressions = re.findall(r"\{\{(.*?)\}\}", template.read_text(encoding="utf-8"))
-        assert expressions, template.name
-        # A value goes through tojson; a quoted literal (a comma between items) needs none.
-        loose = [
-            expression
-            for expression in expressions
-            if not re.search(r"\|\s*tojson\s*$", expression) and not re.fullmatch(r'\s*"[^"]*"\s+if .*', expression)
-        ]
+    found = list(templates.glob("*.json.j2"))
+    assert found
+    for template in found:
+        text = template.read_text(encoding="utf-8")
+        assert "{{" in text, template.name
+        loose = _not_through_tojson(text)
         assert not loose, f"{template.name}: values not written through tojson: {loose}"
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_preview_shows_colour_blindness_views_of_the_hues_and_states(mode: palette.Mode) -> None:
+    loaded = tokens.load(mode)
+    herdr = json.loads(render.render(render.environment(), render.HERDR_TEMPLATE, loaded))
+    names = preview.mode_data(loaded, herdr)["cvd"]["names"]
+    assert names == [name for name in loaded.bases if name != palette.NEUTRAL] + list(contrast.STATES)

@@ -1,9 +1,10 @@
 """Rendering the ports and the README swatch from the tokens, through the Jinja2 templates."""
 
 import json
+import traceback
 from typing import Any
 
-from jinja2 import Environment, PackageLoader, StrictUndefined, select_autoescape
+from jinja2 import Environment, PackageLoader, StrictUndefined, TemplateSyntaxError, select_autoescape
 
 from copper_design import palette, tokens
 
@@ -39,12 +40,25 @@ def context(mode_tokens: tokens.ModeTokens) -> dict[str, Any]:
     return {"mode": mode_tokens.mode, "c": mode_tokens.colours, "bases": list(mode_tokens.bases)}
 
 
+def _template_line(error: BaseException) -> str:
+    """The template line an error was raised at, as `` line N``, or nothing when the traceback has none."""
+    if isinstance(error, TemplateSyntaxError):
+        return f" line {error.lineno}"
+    frames = [frame for frame in traceback.extract_tb(error.__traceback__) if frame.name in _TEMPLATE_FRAMES]
+    return f" line {frames[-1].lineno}" if frames else ""
+
+
+_TEMPLATE_FRAMES = {"top-level template code", "template"}
+"""The names Jinja2 gives a template's own frames in a traceback."""
+
+
 def render_template(env: Environment, template: str, where: str, **values: Any) -> str:
-    """A template rendered with the given values; any failure in it raises a RenderError naming template and where."""
+    """A template rendered with the given values; a failure raises a RenderError naming template, line and where."""
     try:
         return env.get_template(template).render(values)
     except Exception as error:  # a template can raise anything its expressions do; all of it is the template's fault
-        raise RenderError(f"{template} ({where}): {error}") from error
+        message = f"{type(error).__name__}: {error}"
+        raise RenderError(f"{template}{_template_line(error)} ({where}): {message}") from error
 
 
 def render(env: Environment, template: str, mode_tokens: tokens.ModeTokens) -> str:

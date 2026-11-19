@@ -328,11 +328,16 @@ def test_a_parameter_file_that_breaks_its_schema_is_refused(edit: Any, message: 
         palette.parse(raw)
 
 
-@pytest.mark.parametrize("content", [b"[neutral\n", b"# \xe9\n"])
+@pytest.mark.parametrize("content", [b"[neutral\n", b"# \xe9\n", None, "directory"])
 def test_an_unreadable_parameter_file_names_itself(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, content: bytes
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, content: bytes | str | None
 ) -> None:
-    (tmp_path / palette.PARAMETER_FILE).write_bytes(content)
+    # Broken TOML, bytes that are no UTF-8, a missing file, a directory in its place.
+    path = tmp_path / palette.PARAMETER_FILE
+    if isinstance(content, bytes):
+        path.write_bytes(content)
+    elif content == "directory":
+        path.mkdir()
     monkeypatch.setattr(palette, "files", lambda _package: tmp_path)
     with pytest.raises(palette.ParameterError, match=r"^parameters\.toml: "):
         palette.load_parameters()
