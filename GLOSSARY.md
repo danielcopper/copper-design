@@ -92,9 +92,9 @@ calendar app or a weather app. A consumer pins a release and updates by moving t
 
 ### Port
 
-The generator's output for one target, in that target's own format: a Home Assistant base theme, Android `colors.xml`
-and Kotlin, a terminal theme. A port is generic — the shared tokens, nothing that belongs to one consumer — and is
-committed under `ports/<target>/`. It is never edited by hand; it equals what the generator renders.
+The generator's output for one target, in that target's own format: a Home Assistant base theme, Android colour
+resources and Kotlin, a terminal theme. A port is generic — the shared tokens, nothing that belongs to one consumer —
+and is committed under `ports/<target>/`. It is never edited by hand; it equals what the generator renders.
 
 ### Component colour
 

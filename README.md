@@ -30,17 +30,30 @@ For colours:
 - **Tokens**: palette and roles as [DTCG 2025.10](https://www.designtokens.org/) JSON, one file per mode, and a resolver
   file that selects the mode, all in `copper_design/tokens/`.
 - **Ports**: a Python generator with Jinja2 templates renders the tokens into generic ports, one per target, committed
-  under `ports/<target>/`. The first is a [herdr](https://github.com/herdrdev/herdr-app) terminal theme pair,
-  `ports/herdr/copper-light.json` and `copper-dark.json`.
+  under `ports/<target>/`:
+  - `ports/herdr/`: a [herdr](https://github.com/herdrdev/herdr-app) terminal theme pair, `copper-light.json` and
+    `copper-dark.json`.
+  - `ports/android/`: laid out as an Android source set. `kotlin/dev/cupr/design/CopperColors.kt` holds every named
+    colour and role as Compose colours (`CopperColors.light.blue9`, `CopperColors.dark.bg`), and `CopperColorScheme.kt`
+    the Material 3 colour schemes built from them (`CopperColorScheme.light`, `.dark`). `res/values/copper_colors.xml`
+    and `res/values-night/copper_colors.xml` hold the same colours as resources (`@color/copper_bg_alt`) for what
+    Android draws outside Compose, such as the window, the splash screen, widgets and the launcher icon.
 
 An icon or illustration enters only once its provenance is checked. The terms, with the base colours and the roles by
 name, are defined in [GLOSSARY.md](GLOSSARY.md), the decisions behind this layout in [docs/adr/](docs/adr/).
 
+## Taking a port
+
+A consumer copies a port unchanged at a pinned release tag and can check its copy byte for byte against that tag. An
+Android app copies `ports/android/kotlin/` and `ports/android/res/` into its `app/src/main/`; the Kotlin needs Compose
+and material3 (the scheme follows material3's `ColorScheme` as of 1.4.0). Whether its screens use copper's colour scheme
+or the phone's dynamic colours stays the app's call.
+
 ## Status
 
-The palette, the roles and the herdr port are here. The mood follows the measured properties of Rosé Pine (a warm,
-paper-like light mode, a violet-grey dark mode, dusty and muted colours), not its colours. More ports (Android, a Home
-Assistant theme) come next, each through an issue of its own.
+The palette, the roles, the herdr port and the Android port are here. The mood follows the measured properties of Rosé
+Pine (a warm, paper-like light mode, a violet-grey dark mode, dusty and muted colours), not its colours. More ports (a
+Home Assistant theme) come next, each through an issue of its own.
 
 ## Development
 
