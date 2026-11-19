@@ -1,8 +1,9 @@
 # copper-design
 
 copper is one design system for several apps. This repository is its single source: what two or more apps share lives
-here, and a generator renders its tokens into each target's own format. It is filled step by step: colours first, then
-dimensions such as corner radius and spacing, then icons and illustrations.
+here (for colours, as named colours and general roles), and a generator renders its tokens into each target's own
+format. It is filled step by step: colours first, then dimensions such as corner radius and spacing, then icons and
+illustrations.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/swatch-dark.svg">

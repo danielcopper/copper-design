@@ -2,7 +2,7 @@
 status: accepted
 decided: 2026-11-19
 updated: 2026-11-19
-amends: [0001]
+amends: [0001, 0004]
 ---
 
 # Named colours plus a small set of general UI roles
@@ -33,7 +33,7 @@ only make sense inside one app, and every new domain colour a change and a relea
 
 This narrows ADR-0001's roles from "meanings two consumers share" to general UI meanings. When a second consumer needs a
 component colour, a general UI meaning becomes a role here; a domain meaning stays with each consumer, which picks it
-from the named colours, and a colour the palette lacks is added as a base colour. For colours this also narrows
+from the named colours, and a colour the palette lacks is added as a base colour. For colours this also amends
 [ADR-0004](0004-design-system-step-by-step.md)'s rule that what two or more consumers share lives here: of a shared
 domain meaning, only the named colour it is picked from lives here.
 

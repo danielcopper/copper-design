@@ -60,6 +60,4 @@ where the icon file lives is decided under ADR-0004.
 
 [ADR-0005](0005-named-colours-and-general-roles.md) narrows the second layer: the roles are a small set of general UI
 meanings (backgrounds, borders, text, accent, selection, states), beside the named colours — each base colour's main
-value and its steps. When a second consumer needs a component colour, a general UI meaning becomes a role; a domain
-meaning, such as a calendar's colours, stays with each consumer, which picks it from the named colours, and a colour the
-palette lacks is added as a base colour.
+value and its steps. It also says what becomes of a component colour that a second consumer needs.

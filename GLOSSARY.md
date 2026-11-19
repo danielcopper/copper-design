@@ -40,7 +40,7 @@ curve. The palette tokens are generated from it and never edited by hand.
 
 A colour the palette carries a scale of: the neutral, or one of the hues blue, green, teal, yellow, orange, red and
 violet. A base colour names a family, not one colour; its scale holds the colours. Adding one is a table in the
-**parameter file** (the tests and the README list the base colours too), made when a port needs it.
+**parameter file**, made when a port needs it.
 
 ### Named colour
 
@@ -99,6 +99,5 @@ committed under `ports/<target>/`. It is never edited by hand; it equals what th
 ### Component colour
 
 A colour of one consumer's own, such as a dashboard card's tint, a calendar's colours or the colour of an app's launcher
-icon. It stays with that consumer and is defined there by reference to **named colours** or roles. When a second
-consumer needs it, a general UI meaning becomes a role here; a domain meaning stays with each consumer, which picks it
-from the named colours, and a colour the palette lacks is added as a **base colour**.
+icon. It stays with that consumer and is defined there by reference to **named colours** or roles. What happens when a
+second consumer needs it is decided in [ADR-0005](docs/adr/0005-named-colours-and-general-roles.md).
