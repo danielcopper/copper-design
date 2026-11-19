@@ -5,9 +5,9 @@ import re
 from pathlib import Path
 
 import pytest
-from jinja2 import ChoiceLoader, DictLoader, Environment, PackageLoader
+from jinja2 import ChoiceLoader, DictLoader, Environment, FileSystemLoader, PackageLoader
 
-from copper_design import contrast, palette, preview, render, tokens
+from copper_design import palette, preview, render, tokens
 from copper_design.__main__ import main
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -111,6 +111,21 @@ def test_a_template_error_names_its_line() -> None:
         render.render(env, "broken.svg.j2", tokens.load("dark"))
 
 
+def test_a_template_error_in_a_block_names_its_line() -> None:
+    env = _env_with("broken.svg.j2", "<svg>\n{% block body %}\n\n{{ 1 // 0 }}\n{% endblock %}")
+    with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 4 \(dark\): ZeroDivisionError: "):
+        render.render(env, "broken.svg.j2", tokens.load("dark"))
+
+
+def test_a_template_error_in_an_included_template_names_that_template(tmp_path: Path) -> None:
+    (tmp_path / "outer.svg.j2").write_text("<svg>\n{% include 'inner.svg.j2' %}\n", encoding="utf-8")
+    (tmp_path / "inner.svg.j2").write_text("<g>\n\n{{ 1 // 0 }}\n", encoding="utf-8")
+    env = render.environment()
+    env.loader = FileSystemLoader(tmp_path)
+    with pytest.raises(render.RenderError, match=r"^outer\.svg\.j2 \(in inner\.svg\.j2 line 3\) \(light\): "):
+        render.render(env, "outer.svg.j2", tokens.load("light"))
+
+
 def test_a_template_raising_anything_names_template_and_mode() -> None:
     env = _env_with("broken.svg.j2", "{{ 1 // 0 }}")
     with pytest.raises(render.RenderError, match=r"^broken\.svg\.j2 line 1 \(light\): ZeroDivisionError: division"):
@@ -144,14 +159,16 @@ def test_autoescaping_covers_the_html_and_svg_templates_only() -> None:
     assert not autoescape("herdr.json.j2")
 
 
-_LITERAL_CHOICE = r'\s*"[^"]*"\s+if\s+[^"]*?(?:\s+else\s+"[^"]*")?\s*'
+_LITERAL_CHOICE = r'\s*"[^"]*"\s+if\s+(?:(?!\belse\b)[^"])*?(?:\s+else\s+"[^"]*")?\s*'
 
 
 def _not_through_tojson(text: str) -> list[str]:
     """The expressions of a JSON template that write a value without tojson.
 
-    A value goes through tojson; a quoted literal, alone or chosen between two
-    quoted literals (a comma between items), needs none. Expressions may span lines.
+    A value goes through tojson; a quoted literal, written under a condition
+    with no ``else`` or chosen against another quoted literal (a comma between
+    items), needs none. The condition ends at the word ``else``, so a value
+    after it (``"x" if a else c.bg``) is caught. Expressions may span lines.
     """
     expressions = re.findall(r"\{\{(.*?)\}\}", text, re.DOTALL)
     return [
@@ -166,6 +183,9 @@ def test_the_tojson_guard_sees_every_value() -> None:
     assert not _not_through_tojson('{{ "," if not loop.last else "" }}')
     assert _not_through_tojson('{{ c["bg"] }}') == [' c["bg"] ']
     assert _not_through_tojson('{{ "x" if a else c["bg"] }}')
+    assert _not_through_tojson('{{ "x" if a else c.bg }}')
+    assert _not_through_tojson('{{ "x" if a else mode }}')
+    assert _not_through_tojson("{{ mode }}")
     assert _not_through_tojson('{{\n  c["bg"]\n}}')
 
 
@@ -185,4 +205,5 @@ def test_the_preview_shows_colour_blindness_views_of_the_hues_and_states(mode: p
     loaded = tokens.load(mode)
     herdr = json.loads(render.render(render.environment(), render.HERDR_TEMPLATE, loaded))
     names = preview.mode_data(loaded, herdr)["cvd"]["names"]
-    assert names == [name for name in loaded.bases if name != palette.NEUTRAL] + list(contrast.STATES)
+    hues = ["blue", "green", "teal", "yellow", "orange", "red", "violet"]
+    assert names == [*hues, "success", "warning", "error", "info"]
