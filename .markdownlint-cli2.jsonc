@@ -4,7 +4,10 @@
 // action's default, `*.{md,markdown}`, adds no file the globs below miss).
 {
   "config": {
-    "MD013": false
+    "MD013": false,
+    // The README's swatch follows the reader's light or dark mode through
+    // <picture>, which Markdown has no syntax for.
+    "MD033": { "allowed_elements": ["picture", "source", "img"] }
   },
   "globs": ["**/*.md"],
   // .gitignore already names the trees that are not this repository's own

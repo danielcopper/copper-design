@@ -1,0 +1,62 @@
+{
+  "bg": {
+    "$description": "The app's background, behind everything else.",
+    "$value": "{neutral.1}"
+  },
+  "bg-alt": {
+    "$description": "A second background beside bg: sidebars, bars, alternating rows.",
+    "$value": "{neutral.2}"
+  },
+  "surface": {
+    "$description": "Cards, panes and panels that sit on bg.",
+    "$value": "{neutral.2}"
+  },
+  "surface-raised": {
+    "$description": "A component background on a surface: inputs, chips, a row at rest.",
+    "$value": "{neutral.3}"
+  },
+  "border": {
+    "$description": "Borders and dividers between surfaces and around components.",
+    "$value": "{neutral.7}"
+  },
+  "text": {
+    "$description": "Primary text.",
+    "$value": "{neutral.12}"
+  },
+  "text-muted": {
+    "$description": "Secondary text: labels, metadata.",
+    "$value": "{neutral.11}"
+  },
+  "text-subtle": {
+    "$description": "Tertiary text: hints, placeholders, timestamps.",
+    "$value": "{neutral.9}"
+  },
+  "accent": {
+    "$description": "The accent fill: primary buttons, focus, the active item.",
+    "$value": "{blue.9}"
+  },
+  "on-accent": {
+    "$description": "Text and icons on accent.",
+    "$value": "{blue.1}"
+  },
+  "selection": {
+    "$description": "The background of selected text and selected items.",
+    "$value": "{neutral.5}"
+  },
+  "success": {
+    "$description": "Success, done, online.",
+    "$value": "{green.9}"
+  },
+  "warning": {
+    "$description": "Warning: attention needed soon.",
+    "$value": "{orange.9}"
+  },
+  "error": {
+    "$description": "Error: failed, blocked, destructive.",
+    "$value": "{red.9}"
+  },
+  "info": {
+    "$description": "Information: a neutral notice.",
+    "$value": "{teal.9}"
+  }
+}

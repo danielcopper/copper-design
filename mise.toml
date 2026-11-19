@@ -25,6 +25,12 @@ run = "uv lock"
 description = "Run the tests"
 run = "python -m pytest tests -q"
 
+[tasks.render]
+description = "Write the palette tokens from the parameter file, then the ports and the README swatch from the tokens"
+# From the tree, as the tests import it: the venv holds the dev deps, not the
+# project (`setup` says why). The tests hold the committed files equal to this output.
+run = ["python -m copper_design palette", "python -m copper_design render"]
+
 [tasks.lint]
 description = "ruff, basedpyright, Markdown format and Markdown lint"
 # markdownlint-cli2 runs through deno so the repo needs no Node toolchain; which

@@ -1,0 +1,68 @@
+{#-
+  A herdr terminal theme (themes/<name>.json, herdr 0.1.16): the terminal's
+  background, foreground, selection and cursor, the 16 ANSI colours, and
+  `colors`, which overrides herdr's panel colours by name.
+
+  The terminal is a surface (a pane on the canvas), so its background is
+  `surface` and herdr's canvas and chrome are `bg` and `bg-alt`. ANSI order:
+  black, red, green, yellow, blue, magenta (violet), cyan (teal), white, then
+  the bright eight. Every ANSI colour reaches 3:1 on the terminal background.
+  Light mode takes the text steps (11) for the colours and the hovered solid
+  steps (10) for their bright variants; yellow's solid steps are light, so
+  bright yellow takes its high-contrast text step (12). Black and white are
+  neutral steps on the far side of the background: in light mode black is the
+  text step and white a solid grey (9). Dark mode takes the solid steps (9) and
+  the text steps (11) for the bright variants, and black is the neutral solid
+  step (9), the darkest grey that reaches 3:1.
+-#}
+{%- if mode == "light" -%}
+{%- set ansi = [
+  "neutral-12", "red-11", "green-11", "yellow-11", "blue-11", "violet-11", "teal-11", "neutral-9",
+  "neutral-10", "red-10", "green-10", "yellow-12", "blue-10", "violet-10", "teal-10", "neutral-11",
+] -%}
+{%- else -%}
+{%- set ansi = [
+  "neutral-9", "red-9", "green-9", "yellow-9", "blue-9", "violet-9", "teal-9", "neutral-11",
+  "neutral-10", "red-11", "green-11", "yellow-11", "blue-11", "violet-11", "teal-11", "neutral-12",
+] -%}
+{%- endif -%}
+{%- set panel = [
+  ("foreground", "text"),
+  ("surface", "surface"),
+  ("canvas", "bg"),
+  ("chrome", "bg-alt"),
+  ("popover", "surface"),
+  ("raised", "surface-raised"),
+  ("hover", "neutral-4"),
+  ("selected", "neutral-5"),
+  ("border", "border"),
+  ("input", "neutral-8"),
+  ("muted", "text-muted"),
+  ("dim", "text-subtle"),
+  ("accent", "accent"),
+  ("accent_foreground", "on-accent"),
+  ("solid", "text"),
+  ("solid_foreground", "surface"),
+  ("ring", "accent"),
+  ("working", "warning"),
+  ("blocked", "error"),
+  ("done", "success"),
+  ("idle", "text-subtle"),
+  ("unknown", "text-subtle"),
+] -%}
+{
+  "background": "{{ c["surface"] }}",
+  "foreground": "{{ c["text"] }}",
+  "selection": "{{ c["selection"] }}",
+  "cursor": "{{ c["text"] }}",
+  "ansi": [
+{%- for name in ansi %}
+    "{{ c[name] }}"{{ "," if not loop.last }}
+{%- endfor %}
+  ],
+  "colors": {
+{%- for key, name in panel %}
+    "{{ key }}": "{{ c[name] }}"{{ "," if not loop.last }}
+{%- endfor %}
+  }
+}

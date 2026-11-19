@@ -4,6 +4,12 @@ copper is one design system for several apps. This repository is its single sour
 live here, and a generator will render its tokens into each target's own format. It is filled step by step: colours
 first, then dimensions such as corner radius and spacing, then icons and illustrations.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/swatch-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/swatch-light.svg">
+  <img src="docs/swatch-light.svg" alt="copper's eight base colours: neutral, blue, green, teal, yellow, orange, red and violet">
+</picture>
+
 ## Consumers
 
 A consumer is anything that takes its colours, dimensions or artwork from copper: a Home Assistant theme, Android apps
@@ -14,22 +20,30 @@ repository and updates by moving the pin.
 
 For colours:
 
-- **Palette**: eight base colours (a neutral and seven hues), each a scale of 12 steps with a fixed job per step, set in
-  OKLCH separately for light and dark mode.
-- **Roles**: the meanings two or more consumers share, such as primary text or an accent fill, each pointing at a
-  palette step per mode.
-- **Tokens**: palette and roles as [DTCG 2025.10](https://www.designtokens.org/) JSON, one file per mode.
-- **Ports**: a Python generator with Jinja2 templates renders the tokens into generic ports, one per target (a Home
-  Assistant base theme, Android `colors.xml` and Kotlin, and so on), committed under `ports/<target>/`.
+- **Palette**: eight base colours (a neutral and seven hues: blue, green, teal, yellow, orange, red, violet), each a
+  scale of 12 steps with a fixed job per step, set in OKLCH separately for light and dark mode. The generator computes
+  it from a small parameter file (`copper_design/parameters.toml`): per hue its OKLCH hue and peak chroma, per mode the
+  lightness and chroma curves over the steps, and the few steps a hue moves.
+- **Named colours**: each base colour's main value under its plain name (`blue`, its step 9) and its steps (`blue-1` …
+  `blue-12`).
+- **Roles**: a small set of general UI meanings, each pointing at a palette step per mode: backgrounds (`bg`, `bg-alt`,
+  `surface`, `surface-raised`), `border`, text (`text`, `text-muted`, `text-subtle`), `accent`, `on-accent`, `selection`
+  and the states `success`, `warning`, `error`, `info`. A colour only one app uses, such as a calendar's colours, stays
+  with that app and is picked from the named colours there.
+- **Tokens**: palette and roles as [DTCG 2025.10](https://www.designtokens.org/) JSON, one file per mode, and a resolver
+  file that selects the mode, all in `copper_design/tokens/`.
+- **Ports**: a Python generator with Jinja2 templates renders the tokens into generic ports, one per target, committed
+  under `ports/<target>/`. The first is a [herdr](https://github.com/herdrdev/herdr-app) terminal theme pair,
+  `ports/herdr/copper-light.json` and `copper-dark.json`.
 
 An icon or illustration enters only once its provenance is checked. The terms are defined in [GLOSSARY.md](GLOSSARY.md),
 the decisions behind this layout in [docs/adr/](docs/adr/).
 
 ## Status
 
-The palette's direction is chosen: the mood follows the measured properties of Rosé Pine (a warm, paper-like light mode,
-a violet-grey dark mode, dusty and muted colours), not its colours. The colour token files, the generator and the ports
-come next; this repository holds the project setup so far.
+The palette, the roles and the herdr port are here. The mood follows the measured properties of Rosé Pine (a warm,
+paper-like light mode, a violet-grey dark mode, dusty and muted colours), not its colours. More ports (Android, a Home
+Assistant theme) come next, each through an issue of its own.
 
 ## Development
 
@@ -42,6 +56,8 @@ mise run lock    # rewrite uv.lock after a dependency in pyproject.toml changed
 mise run test    # the tests
 mise run lint    # ruff, basedpyright, Markdown format and Markdown lint
 mise run gate    # test, then lint; CLAUDE.md (Pipeline) says which CI checks it leaves out
+mise run render  # the palette tokens from the parameter file, then the ports and the swatch from the tokens
+python -m copper_design preview <file.html>   # a preview page of the palette, the roles and their contrast
 ```
 
 ## License
