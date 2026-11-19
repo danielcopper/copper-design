@@ -206,13 +206,13 @@ def test_the_package_job_installs_only_with_its_pinned_commands() -> None:
 
 
 def _keys(lines: list[str], indent: int) -> list[str]:
-    """The keys written at one indent, a step's leading `- ` counted as indent."""
+    """The keys written at one indent, a step's leading `- ` counted as indent, quoted or not."""
     keys = []
     for line in lines:
         text = line[indent:] if line[:indent].strip(" -") == "" and len(line) > indent else ""
-        match = re.match(r"([A-Za-z_-]+):", text)
+        match = re.match(r"""(["']?)([A-Za-z_-]+)\1:""", text)
         if match and not line[indent - 1 : indent].isalnum():
-            keys.append(match.group(1))
+            keys.append(match.group(2))
     return keys
 
 
@@ -230,12 +230,58 @@ _PACKAGE_STEP_KEYS = [
 ]
 
 
+# Each step's `with:` inputs, verbatim (comments aside): no input may add an
+# install, a cache or another interpreter.
+_PACKAGE_STEP_INPUTS = [
+    [],
+    ['python-version: "3.12"'],
+    ['version: "0.10.2"', 'python-version: "3.12"'],
+    [],
+    [],
+    [],
+]
+# ci.yml's own keys and its workflow-level env: no `defaults` (a shell or a
+# working directory for every run) and no variable reaches the package job.
+_WORKFLOW_KEYS = ["name", "on", "concurrency", "permissions", "env", "jobs"]
+_WORKFLOW_ENV = ['PYTHON_VERSION: "3.14"']
+
+
+def _inputs(step: list[str]) -> list[str]:
+    """A step's `with:` inputs as written, without comments."""
+    inputs: list[str] = []
+    within = False
+    for line in step:
+        if line.strip().removeprefix("- ").startswith("with:"):
+            within = True
+        elif within and len(line) - len(line.lstrip()) >= 10:
+            inputs.append(line.split(" #")[0].strip())
+        else:
+            within = False
+    return inputs
+
+
+def test_a_quoted_key_is_still_a_key() -> None:
+    assert _keys(["      - name: x", '        "if": false', "        'shell': bash"], 8) == ["name", "if", "shell"]
+
+
 def test_the_package_job_and_its_steps_hold_only_their_pinned_keys() -> None:
     job = _jobs()[_PACKAGE_JOB]
     assert _keys(job, 4) == _PACKAGE_JOB_KEYS
     assert [_keys(step, 8) for step in _steps(job)] == _PACKAGE_STEP_KEYS
+    assert [_inputs(step) for step in _steps(job)] == _PACKAGE_STEP_INPUTS
     (generator,) = [step for step in _steps(job) if "working-directory" in _keys(step, 8)]
     assert "        working-directory: /tmp" in generator
+
+
+def test_the_ci_workflow_sets_no_defaults_for_its_jobs() -> None:
+    lines = (_WORKFLOWS / "ci.yml").read_text(encoding="utf-8").splitlines()
+    assert _keys(lines, 0) == _WORKFLOW_KEYS
+    env: list[str] = []
+    for line in lines[lines.index("env:") + 1 :]:
+        if not line.startswith("  "):
+            break
+        env.append(line.split(" #")[0].strip())
+    assert env == _WORKFLOW_ENV
 
 
 # The build backend's hashed constraint: mise.toml's `lock` task writes it from

@@ -72,7 +72,7 @@ jobs:
   # which leaves the project out: the build backend comes from
   # build-constraints.txt with its hashes, the runtime deps from uv.lock with
   # theirs, then the wheel goes in without deps (tests/test_ci_install.py pins
-  # every command and key of this job).
+  # every command, `with:` input and key of this job).
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 10
