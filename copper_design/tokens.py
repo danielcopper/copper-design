@@ -39,8 +39,10 @@ _REFERENCE = re.compile(r"^\{([^{}]+)\}$")
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
 _HEX_FALLBACK = re.compile(r"^#[0-9a-fA-F]{6}$")
 _ROOT = "$root"
-_COMMON_KEYS = {"$type", "$description", "$extensions", "$deprecated"}
-_TOKEN_KEYS = {"$value", *_COMMON_KEYS}
+_TYPE = "$type"
+_VALUE = "$value"
+_COMMON_KEYS = {_TYPE, "$description", "$extensions", "$deprecated"}
+_TOKEN_KEYS = {_VALUE, *_COMMON_KEYS}
 _GROUP_KEYS = _COMMON_KEYS
 
 
@@ -69,9 +71,9 @@ def palette_document(palette: Palette) -> dict[str, Any]:
     """One mode's palette as a DTCG document: a group per base colour, its main value its root token."""
     return {
         name: {
-            "$type": "color",
-            _ROOT: {"$value": f"{{{name}.{MAIN_STEP}}}"},
-            **{str(step): {"$value": colour_value(hex_colour)} for step, hex_colour in enumerate(scale, start=1)},
+            _TYPE: "color",
+            _ROOT: {_VALUE: f"{{{name}.{MAIN_STEP}}}"},
+            **{str(step): {_VALUE: colour_value(hex_colour)} for step, hex_colour in enumerate(scale, start=1)},
         }
         for name, scale in palette.items()
     }
@@ -161,7 +163,7 @@ def _resolver() -> tuple[str, dict[str, list[str]]]:
 
 
 def _is_token(node: object) -> bool:
-    return isinstance(node, dict) and "$value" in node
+    return isinstance(node, dict) and _VALUE in node
 
 
 def _merge(into: dict[str, Any], document: dict[str, Any], prefix: str = "") -> None:
@@ -218,7 +220,7 @@ class Token:
 
 
 def _own_type(node: dict[str, Any], where: str, inherited: str | None) -> str | None:
-    value = node.get("$type", inherited)
+    value = node.get(_TYPE, inherited)
     if value is not None and not isinstance(value, str):
         raise TokenError(f"{where}: $type must be a string, not {value!r}")
     return value
@@ -240,40 +242,52 @@ def _check_properties(node: dict[str, Any], where: str) -> None:
             raise TokenError(f"{where}: {key} must be {' or '.join(kind.__name__ for kind in kinds)}")
 
 
+def _token(node: dict[str, Any], path: str, group_type: str | None) -> Token:
+    """A token node, checked: only the token properties, each of its type."""
+    unknown = sorted(set(node) - _TOKEN_KEYS)
+    if unknown:
+        raise TokenError(f"{path}: a token cannot hold {unknown}")
+    _check_properties(node, path)
+    return Token(path, _own_type(node, path, group_type), node[_VALUE])
+
+
+def _children(group: dict[str, Any], where: str) -> list[str]:
+    """A group's children (tokens, groups, its root token), after checking its own properties."""
+    unknown = sorted(key for key in group if key.startswith("$") and key not in _GROUP_KEYS | {_ROOT})
+    if unknown:
+        raise TokenError(f"{where}: unknown group properties {unknown}")
+    children = [name for name in group if not name.startswith("$") or name == _ROOT]
+    if not children:
+        raise TokenError(f"{where}: an empty group")
+    _check_properties(group, where)
+    return children
+
+
+def _check_child(name: str, node: object, path: str, top_level: bool) -> None:
+    """A child of a group: an object, a root token only inside a group, a name the ports can carry."""
+    if not isinstance(node, dict):
+        raise TokenError(f"{path}: neither a token nor a group")
+    if name == _ROOT and top_level:
+        raise TokenError(f"{path}: a root token belongs in a group")
+    if name != _ROOT and not _NAME.match(name):
+        raise TokenError(f"{path!r}: a name is lowercase letters and digits, words joined by hyphens")
+    if name == _ROOT and _VALUE not in node:
+        raise TokenError(f"{path}: a root token needs a $value")
+
+
 def flatten(tree: dict[str, Any]) -> dict[str, Token]:
     """Every token of a tree by path, each with its type inherited from its groups."""
     tokens: dict[str, Token] = {}
 
-    def token(node: dict[str, Any], path: str, group_type: str | None) -> None:
-        unknown = sorted(set(node) - _TOKEN_KEYS)
-        if unknown:
-            raise TokenError(f"{path}: a token cannot hold {unknown}")
-        _check_properties(node, path)
-        tokens[path] = Token(path, _own_type(node, path, group_type), node["$value"])
-
     def walk(group: dict[str, Any], prefix: str, inherited: str | None) -> None:
         where = prefix.removesuffix(".") or "the token tree"
         group_type = _own_type(group, where, inherited)
-        unknown = sorted(key for key in group if key.startswith("$") and key not in _GROUP_KEYS | {_ROOT})
-        if unknown:
-            raise TokenError(f"{where}: unknown group properties {unknown}")
-        children = [name for name in group if not name.startswith("$") or name == _ROOT]
-        if not children:
-            raise TokenError(f"{where}: an empty group")
-        _check_properties(group, where)
-        for name in children:
+        for name in _children(group, where):
             node = group[name]
             path = f"{prefix}{name}"
-            if not isinstance(node, dict):
-                raise TokenError(f"{path}: neither a token nor a group")
-            if name == _ROOT and not prefix:
-                raise TokenError(f"{path}: a root token belongs in a group")
-            if name != _ROOT and not _NAME.match(name):
-                raise TokenError(f"{path!r}: a name is lowercase letters and digits, words joined by hyphens")
-            if "$value" in node:
-                token(node, path, group_type)
-            elif name == _ROOT:
-                raise TokenError(f"{path}: a root token needs a $value")
+            _check_child(name, node, path, top_level=not prefix)
+            if _VALUE in node:
+                tokens[path] = _token(node, path, group_type)
             else:
                 walk(node, f"{path}.", group_type)
 
