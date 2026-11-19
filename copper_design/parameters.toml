@@ -13,10 +13,11 @@
 
 # The neutral scale has curves of its own, step 1 first. Light runs from a warm
 # paper (hue about 70) to violet-grey text (hue about 290); dark stays violet-grey
-# throughout. Light step 10 sits at 0.54, so the subtle text on it reaches 4.5:1
-# on the app's background.
+# throughout. Light step 10 sits at 0.53, so the subtle text on it reaches 4.5:1
+# on the app's background and on the darkest panel herdr derives from the
+# terminal's (its chrome).
 [neutral.light]
-lightness = [0.987, 0.970, 0.939, 0.915, 0.890, 0.860, 0.810, 0.750, 0.650, 0.540, 0.500, 0.396]
+lightness = [0.987, 0.970, 0.939, 0.915, 0.890, 0.860, 0.810, 0.750, 0.650, 0.530, 0.500, 0.396]
 chroma = [0.011, 0.011, 0.015, 0.016, 0.016, 0.016, 0.014, 0.018, 0.027, 0.036, 0.046, 0.052]
 hue = [77, 72, 64, 62, 60, 55, 330, 300, 298, 292, 291, 290]
 

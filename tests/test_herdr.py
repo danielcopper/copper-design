@@ -137,7 +137,6 @@ _PANEL_TEXT = ("foreground", "muted", "dim")
 _OPEN = "open (issue 12): whether the panels' dim text takes a stronger step than text-subtle"
 # (mode, text key, derived surface): why it may stay below 4.5:1.
 _SHORT_ON_A_SURFACE = {
-    ("light", "dim", "chrome"): f"{_OPEN}; herdr mixes the light chrome 60% toward a warm grey",
     ("dark", "dim", "popover"): f"{_OPEN}; herdr lifts the dark popover 6% toward white",
     ("dark", "dim", "raised"): f"{_OPEN}; herdr lifts the dark raised surface 9% toward white",
 }
