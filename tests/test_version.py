@@ -63,8 +63,8 @@ def test_every_extra_file_carries_the_annotation_on_its_version_line() -> None:
 
 
 def test_the_lock_holds_the_pyproject_version_for_the_project() -> None:
-    # `uv sync --locked` refuses a lock whose project entry lags pyproject.toml,
-    # which is every install in CI.
+    # Every install in CI passes `--locked` (`uv sync`, and `uv export` in the
+    # package job), which refuses a lock whose project entry lags pyproject.toml.
     lock = tomllib.loads((_ROOT / "uv.lock").read_text(encoding="utf-8"))
     entries = [package for package in lock["package"] if package["name"] == _project()["name"]]
     assert len(entries) == 1, f"uv.lock has {len(entries)} entries named {_project()['name']}"
