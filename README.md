@@ -49,7 +49,7 @@ The tasks run through [mise](https://mise.jdx.dev/), which brings Python, uv and
 ```sh
 mise trust
 mise run setup   # the locked dependencies from uv.lock into .venv
-mise run lock    # rewrite uv.lock after a dependency in pyproject.toml changed
+mise run lock    # rewrite uv.lock and build-constraints.txt after a dependency in pyproject.toml changed
 mise run test    # the tests
 mise run lint    # ruff, basedpyright, Markdown format and Markdown lint
 mise run gate    # test, then lint; CLAUDE.md (Pipeline) says which CI checks it leaves out

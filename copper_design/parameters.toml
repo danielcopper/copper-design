@@ -46,8 +46,9 @@ chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.
 # orange's solid fill. Light blue is a darker petrol under light text. In light
 # mode step 11 is staggered in lightness (green, yellow, orange, red, violet), so
 # the hues stay apart with red-green colour blindness. A new base colour is one
-# more table here (the tests and the README's swatch description name the base
-# colours too).
+# more table here; the base colours are also named in the tests (test_palette,
+# test_tokens), in GLOSSARY.md (Base colour) and in the README's swatch
+# description, and counted ("eight") in the README.
 [hue.blue]
 hue = 245
 chroma = 0.112

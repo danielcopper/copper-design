@@ -21,7 +21,7 @@ run = "uv sync --locked --no-build --no-install-project --extra dev"
 description = "Rewrite uv.lock and build-constraints.txt from pyproject.toml, after a dependency there changed"
 # build-constraints.txt pins pyproject's [build-system] requires with their
 # hashes, for the wheel build in .github/workflows/ci.yml's package job; uv.lock
-# does not hold the build backend. `uv pip compile` resolves and installs nothing.
+# does not hold the build backend.
 run = [
     "uv lock",
     """python -c 'import tomllib; print(*tomllib.load(open("pyproject.toml", "rb"))["build-system"]["requires"], sep="\\n")' | uv pip compile - --generate-hashes --universal --no-header --no-annotate --quiet --output-file build-constraints.txt""",
