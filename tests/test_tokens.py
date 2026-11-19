@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from copper_design import palette, tokens
+from copper_design import contrast, palette, tokens
 
 ROLES = {
     "bg",
@@ -168,6 +168,9 @@ def test_a_reference_to_another_type_is_refused() -> None:
         ({"Red": {"1": {"$value": _COLOUR}}}, "'Red': a name is lowercase"),
         ({"": {"1": {"$value": _COLOUR}}}, "'': a name is lowercase"),
         ({"bg alt": {"$value": "{red.1}"}}, "'bg alt': a name is lowercase"),
+        ({"bg-": {"$value": "{red.1}"}}, "'bg-': a name is lowercase"),
+        ({"bg--alt": {"$value": "{red.1}"}}, "'bg--alt': a name is lowercase"),
+        ({"bg_alt": {"$value": "{red.1}"}}, "'bg_alt': a name is lowercase"),
         ({"red": {"1": {"$value": _COLOUR}, "{x}": {"$value": _COLOUR}}}, "'red.{x}': a name is lowercase"),
         ({"$root": {"$value": _COLOUR}}, "$root: a root token belongs in a group"),
         ({"red": {"$description": 5, "1": {"$value": _COLOUR}}}, "red: $description must be str"),
@@ -218,6 +221,11 @@ def _colour(red: float) -> dict[str, Any]:
 
 
 _NEUTRAL = {"neutral": {"$type": "color", "1": {"$value": _COLOUR}}}
+_FULL_NEUTRAL = {
+    "neutral": {"$type": "color", "$root": {"$value": "{neutral.9}"}}
+    | {str(step): {"$value": _COLOUR} for step in range(1, 13)}
+}
+_ALL_ROLES = {role: {"$value": "{neutral.1}"} for role in contrast.KINDS}
 
 type WriteResolver = Callable[..., None]
 
@@ -282,8 +290,27 @@ def test_a_token_and_a_group_of_one_name_do_not_merge(
         ),
         (_NEUTRAL | {"size": {"$value": 4}}, "size: an untyped token; copper holds colours only"),
         (_NEUTRAL | {"size": {"$type": "dimension", "$value": {"value": 4, "unit": "px"}}}, "size: a dimension token"),
-        (_NEUTRAL | {"bg": _colour(0.5)}, "bg: a role is a reference to a palette step"),
+        (_FULL_NEUTRAL | _ALL_ROLES | {"bg": _colour(0.5)}, "bg: a role is a reference to a palette step"),
         ({"blue": {"$type": "color", "1": {"$value": _COLOUR}}} | _NEUTRAL, "the palette must start with the neutral"),
+        ({"bg": _colour(0.5)}, "the palette has no base colours"),
+        (
+            {"neutral": {k: v for k, v in _FULL_NEUTRAL["neutral"].items() if k != "12"}} | _ALL_ROLES,
+            "neutral: a base colour holds $root and the steps 1-12, not",
+        ),
+        (
+            {"neutral": {k: v for k, v in _FULL_NEUTRAL["neutral"].items() if k != "$root"}} | _ALL_ROLES,
+            "neutral: a base colour holds $root and the steps 1-12, not",
+        ),
+        (_FULL_NEUTRAL | _ALL_ROLES | {"text": {"$value": "{bg}"}}, "text: a role refers to a palette step, not {bg}"),
+        (
+            _FULL_NEUTRAL | _ALL_ROLES | {"text": {"$value": "{neutral.$root}"}},
+            "text: a role refers to a palette step, not {neutral.$root}",
+        ),
+        (
+            _FULL_NEUTRAL | {k: v for k, v in _ALL_ROLES.items() if k != "info"},
+            "the roles are not copper's: missing ['info'], unknown []",
+        ),
+        (_FULL_NEUTRAL | _ALL_ROLES | {"link": {"$value": "{neutral.2}"}}, "missing [], unknown ['link']"),
     ],
 )
 def test_a_mode_the_ports_cannot_take_is_refused(
@@ -301,6 +328,11 @@ _GOOD = _resolver(light=["t.json"], dark=["t.json"])
     ("resolver", "message"),
     [
         (_GOOD | {"version": "2025.06"}, "version must be 2025.10"),
+        (
+            _GOOD
+            | {"modifiers": {"theme": _GOOD["modifiers"]["mode"]}, "resolutionOrder": [{"$ref": "#/modifiers/theme"}]},
+            "the modifier must be 'mode', not 'theme'",
+        ),
         (_GOOD | {"sets": {}}, "copper's resolver holds no ['sets']"),
         ({k: v for k, v in _GOOD.items() if k != "modifiers"}, "needs exactly one modifier"),
         (_GOOD | {"modifiers": {**_GOOD["modifiers"], "size": {"contexts": {"a": []}}}}, "needs exactly one modifier"),
@@ -325,7 +357,13 @@ _GOOD = _resolver(light=["t.json"], dark=["t.json"])
             _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": 1}]}}}},
             "context 'light' needs a list of token files",
         ),
-        (_GOOD | {"modifiers": {"mode": {"contexts": {"light": 5}}}}, "context 'light' needs a list of token files"),
+        (
+            _GOOD | {"modifiers": {"mode": {"contexts": {"light": 5}}}},
+            "context 'light' needs a list of token files, not 5",
+        ),
+        (_resolver(light=["../t.json"], dark=["t.json"]), "context 'light' needs a list of token files"),
+        (_resolver(light=["sub/t.json"], dark=["t.json"]), "context 'light' needs a list of token files"),
+        (_resolver(light=["dup.json"], dark=["t.json"]), "dup.json: duplicate key 'a'"),
         (
             _GOOD | {"modifiers": {"mode": {"contexts": {"light": [{"$ref": "t.json", "type": "set"}]}}}},
             "context 'light' needs a list of token files",
@@ -347,7 +385,16 @@ def test_a_resolver_copper_does_not_use_is_refused(
 ) -> None:
     resolver_dir(resolver, t=_NEUTRAL, list=[])
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
+    (tmp_path / "dup.json").write_text('{"a": {"$value": "{b}"}, "a": {"$value": "{c}"}}', encoding="utf-8")
     (tmp_path / "latin.json").write_bytes(b'{"x": "\xe9"}')
     (tmp_path / "folder.json").mkdir()
     with pytest.raises(tokens.TokenError, match=re.escape(message)):
+        tokens.merged({"mode": "light"})
+
+
+def test_a_resolver_with_a_duplicate_key_is_refused(resolver_dir: WriteResolver, tmp_path: Path) -> None:
+    resolver_dir(_GOOD, t=_NEUTRAL)
+    text = (tmp_path / tokens.RESOLVER).read_text(encoding="utf-8")
+    (tmp_path / tokens.RESOLVER).write_text(text[:-1] + ', "version": "2025.10"}', encoding="utf-8")
+    with pytest.raises(tokens.TokenError, match=re.escape(f"{tokens.RESOLVER}: duplicate key 'version'")):
         tokens.merged({"mode": "light"})

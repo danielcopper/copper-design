@@ -29,9 +29,12 @@ from typing import Any
 
 from coloraide import Color
 
-from copper_design.palette import MAIN_STEP, MODES, NEUTRAL, Mode, Palette, build, load_parameters
+from copper_design.contrast import KINDS
+from copper_design.palette import MAIN_STEP, MODES, NEUTRAL, STEPS, Mode, Palette, build, load_parameters
 
 RESOLVER = "copper.resolver.json"
+MODIFIER = "mode"
+"""The resolver's one modifier, whose contexts are the modes."""
 _REFERENCE = re.compile(r"^\{([^{}]+)\}$")
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
 _HEX_FALLBACK = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -85,11 +88,27 @@ def palette_files() -> dict[str, str]:
     return {palette_file(mode): dump(palette_document(palettes[mode])) for mode in MODES}
 
 
+class _DuplicateKeyError(ValueError):
+    pass
+
+
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """A JSON object's members, refusing a key that appears twice (json.loads would keep the last silently)."""
+    document: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in document:
+            raise _DuplicateKeyError(key)
+        document[key] = value
+    return document
+
+
 def _read(name: str) -> dict[str, Any]:
     try:
-        document = json.loads(directory().joinpath(name).read_text(encoding="utf-8"))
+        document = json.loads(directory().joinpath(name).read_text(encoding="utf-8"), object_pairs_hook=_unique_keys)
     except FileNotFoundError as error:
         raise TokenError(f"{name}: no such token file") from error
+    except _DuplicateKeyError as error:
+        raise TokenError(f"{name}: duplicate key {error.args[0]!r}") from error
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise TokenError(f"{name}: cannot be read as JSON: {error}") from error
     if not isinstance(document, dict):
@@ -103,15 +122,17 @@ _FILE = re.compile(r"^[A-Za-z0-9_.-]+\.json$")
 
 def _context_files(context: str, sources: object) -> list[str]:
     """A context's token files: a non-empty list of ``{"$ref": "<file>.json"}`` beside the resolver."""
-    files: list[str] = []
-    for source in sources if isinstance(sources, list) else [None]:
+    if not isinstance(sources, list):
+        raise TokenError(f"{RESOLVER}: context {context!r} needs a list of token files, not {sources!r}")
+    refs: list[str] = []
+    for source in sources:
         ref = source.get("$ref") if isinstance(source, dict) and set(source) == {"$ref"} else None
         if not isinstance(ref, str) or not _FILE.match(ref):
             raise TokenError(f"{RESOLVER}: context {context!r} needs a list of token files, not {source!r}")
-        files.append(ref)
-    if not files:
+        refs.append(ref)
+    if not refs:
         raise TokenError(f"{RESOLVER}: context {context!r} lists no token files")
-    return files
+    return refs
 
 
 def _resolver() -> tuple[str, dict[str, list[str]]]:
@@ -126,6 +147,8 @@ def _resolver() -> tuple[str, dict[str, list[str]]]:
     if not isinstance(modifiers, dict) or len(modifiers) != 1:
         raise TokenError(f"{RESOLVER}: needs exactly one modifier")
     ((name, modifier),) = modifiers.items()
+    if name != MODIFIER:
+        raise TokenError(f"{RESOLVER}: the modifier must be {MODIFIER!r}, not {name!r}")
     if not isinstance(modifier, dict) or set(modifier) - {"description", "contexts"}:
         raise TokenError(f"{RESOLVER}: modifier {name!r} holds only a description and its contexts")
     contexts = modifier.get("contexts")
@@ -334,7 +357,7 @@ class ModeTokens:
 
 def load(mode: Mode) -> ModeTokens:
     """One mode's tokens, as the resolver selects and resolves them."""
-    tree = merged({"mode": mode})
+    tree = merged({MODIFIER: mode})
     flat = flatten(tree)
     colours: dict[str, str] = {}
     paths: dict[str, str] = {}
@@ -347,17 +370,44 @@ def load(mode: Mode) -> ModeTokens:
             raise TokenError(f"{paths[name]} and {path} are both {name!r} in the ports")
         paths[name] = path
         colours[name] = check_colour(path, token.value)
+    bases = _bases(tree)
+    return ModeTokens(mode, colours, bases, _roles(tree, flat, bases))
+
+
+_BASE_KEYS = {_ROOT, *(str(step) for step in range(1, STEPS + 1))}
+
+
+def _bases(tree: dict[str, Any]) -> tuple[str, ...]:
+    """The palette's base colours, the neutral first, each with its main value and all 12 steps."""
     bases = tuple(name for name, node in tree.items() if not _is_token(node))
-    if not bases or bases[0] != NEUTRAL:
-        raise TokenError(f"the palette must start with the {NEUTRAL}, not {bases[:1]}")
+    if not bases:
+        raise TokenError("the palette has no base colours")
+    if bases[0] != NEUTRAL:
+        raise TokenError(f"the palette must start with the {NEUTRAL}, not {bases[0]!r}")
+    for name in bases:
+        keys = {key for key in tree[name] if not key.startswith("$") or key == _ROOT}
+        if keys != _BASE_KEYS:
+            raise TokenError(f"{name}: a base colour holds $root and the steps 1-{STEPS}, not {sorted(keys)}")
+    return bases
+
+
+def _roles(tree: dict[str, Any], flat: dict[str, Token], bases: tuple[str, ...]) -> dict[str, str]:
+    """Every role and the palette step it refers to; the roles must be exactly contrast.KINDS's."""
     roles: dict[str, str] = {}
     for name, node in tree.items():
-        if _is_token(node):
-            reference = flat[name].reference
-            if reference is None:
-                raise TokenError(f"{name}: a role is a reference to a palette step, not {node['$value']!r}")
-            roles[name] = reference
-    return ModeTokens(mode, colours, bases, roles)
+        if not _is_token(node):
+            continue
+        reference = flat[name].reference
+        if reference is None:
+            raise TokenError(f"{name}: a role is a reference to a palette step, not {node['$value']!r}")
+        base, _, step = reference.partition(".")
+        if base not in bases or step not in _BASE_KEYS - {_ROOT}:
+            raise TokenError(f"{name}: a role refers to a palette step, not {{{reference}}}")
+        roles[name] = reference
+    missing, unknown = sorted(set(KINDS) - set(roles)), sorted(set(roles) - set(KINDS))
+    if missing or unknown:
+        raise TokenError(f"the roles are not copper's: missing {missing}, unknown {unknown}")
+    return roles
 
 
 def colours(mode: Mode) -> Mapping[str, str]:
