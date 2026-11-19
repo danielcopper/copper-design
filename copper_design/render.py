@@ -2,19 +2,32 @@
 
 import json
 import traceback
+import xml.etree.ElementTree as ElementTree
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, TemplateSyntaxError, select_autoescape
 
-from copper_design import palette, tokens
+from copper_design import material, palette, tokens
 
 HERDR_TEMPLATE = "herdr.json.j2"
 OUTPUTS = (
     ("ports/herdr/copper-{mode}.json", HERDR_TEMPLATE),
+    ("ports/android/res/{android_values}/copper_colors.xml", "copper_colors.xml.j2"),
     ("docs/swatch-{mode}.svg", "swatch.svg.j2"),
 )
 """What `render` writes: a path below the output root and its template, once per mode."""
+
+KOTLIN = "ports/android/kotlin/dev/cupr/design"
+BOTH_MODES_OUTPUTS = (
+    (f"{KOTLIN}/CopperColors.kt", "CopperColors.kt.j2"),
+    (f"{KOTLIN}/CopperColorScheme.kt", "CopperColorScheme.kt.j2"),
+)
+"""What `render` writes once, from both modes' tokens: a path below the output root and its template."""
+
+ANDROID_VALUES: dict[palette.Mode, str] = {"light": "values", "dark": "values-night"}
+"""The Android resource directory of each mode: the system takes values-night in dark mode."""
 
 
 class RenderError(ValueError):
@@ -24,21 +37,66 @@ class RenderError(ValueError):
 def environment() -> Environment:
     """The templates shipped with the package; a name a template uses but the context lacks raises.
 
-    Autoescaping is on for the HTML and SVG templates and off for the JSON
-    template, which writes every value through the ``tojson`` filter instead
-    (tests/test_render.py holds it to that).
+    Autoescaping is on for the HTML, SVG and XML templates and off for the
+    JSON template, which writes every value through the ``tojson`` filter
+    instead (tests/test_render.py holds it to that), and for the Kotlin
+    templates, which write only names and colours the filters below spell.
     """
-    return Environment(
+    env = Environment(
         loader=PackageLoader("copper_design", "templates"),
         undefined=StrictUndefined,
-        autoescape=select_autoescape(enabled_extensions=("html.j2", "svg.j2"), default_for_string=True, default=False),
+        autoescape=select_autoescape(
+            enabled_extensions=("html.j2", "svg.j2", "xml.j2"), default_for_string=True, default=False
+        ),
         keep_trailing_newline=True,
     )
+    env.filters.update(
+        kotlin_name=kotlin_name, kotlin_colour=kotlin_colour, android_name=android_name, android_colour=android_colour
+    )
+    return env
+
+
+def kotlin_name(name: str) -> str:
+    """A port name as a Kotlin property: ``bg-alt`` is ``bgAlt``, ``blue-9`` is ``blue9``."""
+    first, *rest = name.split("-")
+    return first + "".join(word[:1].upper() + word[1:] for word in rest)
+
+
+def kotlin_colour(hex_colour: str) -> str:
+    """An opaque ``#rrggbb`` as a Compose colour: ``Color(0xFFRRGGBB)``."""
+    return f"Color(0xFF{hex_colour[1:].upper()})"
+
+
+def android_name(name: str) -> str:
+    """A port name as an Android resource name: ``bg-alt`` is ``copper_bg_alt``, ``blue-9`` is ``copper_blue_9``."""
+    return "copper_" + name.replace("-", "_")
+
+
+def android_colour(hex_colour: str) -> str:
+    """An opaque ``#rrggbb`` as an Android colour resource writes it, alpha first: ``#FFRRGGBB``."""
+    return f"#FF{hex_colour[1:].upper()}"
 
 
 def context(mode_tokens: tokens.ModeTokens) -> dict[str, Any]:
-    """What every template gets: the mode, its colours by name, the base colours in palette order."""
-    return {"mode": mode_tokens.mode, "c": mode_tokens.colours, "bases": list(mode_tokens.bases)}
+    """What every template gets: the mode, its colours by name, the base colours in palette order, the roles."""
+    return {
+        "mode": mode_tokens.mode,
+        "c": mode_tokens.colours,
+        "bases": list(mode_tokens.bases),
+        "roles": list(mode_tokens.roles),
+    }
+
+
+def both_modes_context(by_mode: Mapping[palette.Mode, tokens.ModeTokens]) -> dict[str, Any]:
+    """What a template rendered once for both modes gets: per mode its context and its Material colour scheme's
+    sources (role, the mode its colour comes from, the copper name), and the material3 version."""
+    return {
+        "modes": [
+            context(by_mode[mode]) | {"material": [(role, *material.source(role, mode)) for role in material.ROLES]}
+            for mode in palette.MODES
+        ],
+        "material3": material.MATERIAL3,
+    }
 
 
 def _where_in_template(template: str, error: BaseException) -> str:
@@ -85,22 +143,38 @@ def render(env: Environment, template: str, mode_tokens: tokens.ModeTokens) -> s
     return render_template(env, template, mode_tokens.mode, **context(mode_tokens))
 
 
+def _check_format(path: str, template: str, text: str) -> None:
+    """A JSON or XML output parsed, so a template that renders a broken one raises."""
+    if path.endswith(".json"):
+        try:
+            json.loads(text)
+        except json.JSONDecodeError as error:
+            raise RenderError(f"{path} ({template}) is no valid JSON: {error}") from error
+    elif path.endswith(".xml"):
+        try:
+            ElementTree.fromstring(text)
+        except ElementTree.ParseError as error:
+            raise RenderError(f"{path} ({template}) is no well-formed XML: {error}") from error
+
+
 def outputs() -> dict[str, str]:
     """The ports and the README swatch rendered from the tokens, by path below the output root.
 
-    A JSON output is parsed, so a template that renders broken JSON raises here.
+    Each of OUTPUTS is rendered once per mode, each of BOTH_MODES_OUTPUTS once
+    with both modes' tokens. A JSON or XML output is parsed, so a template that
+    renders a broken one raises here.
     """
     env = environment()
     rendered: dict[str, str] = {}
-    for mode in palette.MODES:
-        mode_tokens = tokens.load(mode)
+    by_mode: dict[palette.Mode, tokens.ModeTokens] = {mode: tokens.load(mode) for mode in palette.MODES}
+    for mode, mode_tokens in by_mode.items():
         for pattern, template in OUTPUTS:
-            path = pattern.format(mode=mode)
+            path = pattern.format(mode=mode, android_values=ANDROID_VALUES[mode])
             text = render(env, template, mode_tokens)
-            if path.endswith(".json"):
-                try:
-                    json.loads(text)
-                except json.JSONDecodeError as error:
-                    raise RenderError(f"{path} ({template}) is no valid JSON: {error}") from error
+            _check_format(path, template, text)
             rendered[path] = text
+    for path, template in BOTH_MODES_OUTPUTS:
+        text = render_template(env, template, "both modes", **both_modes_context(by_mode))
+        _check_format(path, template, text)
+        rendered[path] = text
     return rendered

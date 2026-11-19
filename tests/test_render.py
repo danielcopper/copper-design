@@ -142,6 +142,14 @@ def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.Monk
         render.outputs()
 
 
+def test_an_xml_output_that_is_not_well_formed_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    env = _env_with("broken.xml.j2", "<resources><color>{{ c['bg'] }}</resources>")
+    monkeypatch.setattr(render, "environment", lambda: env)
+    monkeypatch.setattr(render, "OUTPUTS", (("x-{mode}.xml", "broken.xml.j2"),))
+    with pytest.raises(render.RenderError, match=r"^x-light\.xml \(broken\.xml\.j2\) is no well-formed XML"):
+        render.outputs()
+
+
 def test_a_broken_preview_template_ends_the_run_with_its_message(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
@@ -153,12 +161,14 @@ def test_a_broken_preview_template_ends_the_run_with_its_message(
     assert capsys.readouterr().err.startswith("error: preview.html.j2 line 1 (both modes): UndefinedError: ")
 
 
-def test_autoescaping_covers_the_html_and_svg_templates_only() -> None:
+def test_autoescaping_covers_the_html_svg_and_xml_templates_only() -> None:
     autoescape = render.environment().autoescape
     assert callable(autoescape)
     assert autoescape("preview.html.j2")
     assert autoescape("swatch.svg.j2")
+    assert autoescape("copper_colors.xml.j2")
     assert not autoescape("herdr.json.j2")
+    assert not autoescape("CopperColors.kt.j2")
 
 
 _LITERAL_CHOICE = r'\s*"[^"]*"\s+if\s+(?:(?!\belse\b)[^"])*?(?:\s+else\s+"[^"]*")?\s*'
