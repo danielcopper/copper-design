@@ -14,9 +14,13 @@ files beside the resolver, and a resolution order that is that modifier. Token
 values are opaque colours in sRGB or curly-brace references.
 
 Everything it reads is checked, and anything it does not understand raises a
-TokenError naming the file or the token's path: an unknown ``$`` property, an
+TokenError naming the file or the token's path: a file that is no JSON object or
+holds a duplicate key, an unknown ``$`` property or one of the wrong type, an
 empty group, a name the ports cannot carry, a token and a group of one name,
-two paths that the ports would spell alike.
+two paths that the ports would spell alike, a colour that is not opaque sRGB.
+Loading a mode also checks it whole: base colours, the neutral first, each with
+its main value (``$root``) and the steps 1-12; every role a reference to a
+palette step; and the roles exactly copper_design.contrast's KINDS.
 """
 
 import json
@@ -30,7 +34,7 @@ from typing import Any
 from coloraide import Color
 
 from copper_design.contrast import KINDS
-from copper_design.palette import MAIN_STEP, MODES, NEUTRAL, STEPS, Mode, Palette, build, load_parameters
+from copper_design.palette import MAIN_STEP, MODES, NEUTRAL, STEP_NAMES, STEPS, Mode, Palette, build, load_parameters
 
 RESOLVER = "copper.resolver.json"
 MODIFIER = "mode"
@@ -374,7 +378,7 @@ def load(mode: Mode) -> ModeTokens:
     return ModeTokens(mode, colours, bases, _roles(tree, flat, bases))
 
 
-_BASE_KEYS = {_ROOT, *(str(step) for step in range(1, STEPS + 1))}
+_BASE_KEYS = {_ROOT, *STEP_NAMES}
 
 
 def _bases(tree: dict[str, Any]) -> tuple[str, ...]:

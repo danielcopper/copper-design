@@ -22,6 +22,8 @@ from coloraide import Color
 type Mode = Literal["light", "dark"]
 MODES: tuple[Mode, ...] = get_args(Mode.__value__)
 STEPS = 12
+STEP_NAMES = frozenset(str(step) for step in range(1, STEPS + 1))
+"""The steps' names in the parameter file and the token files: "1" to "12"."""
 MAIN_STEP = 9
 """The step a base colour's plain name stands for: its solid fill at rest."""
 
@@ -106,7 +108,7 @@ def _curve(value: object, where: str, bounds: tuple[float, float]) -> tuple[floa
 
 
 def _steps(value: object, where: str) -> dict[int, float]:
-    table = _table(value, where, {str(step) for step in range(1, STEPS + 1)}, required=set())
+    table = _table(value, where, set(STEP_NAMES), required=set())
     return {int(step): _number(item, f"{where}.{step}", _LIGHTNESS) for step, item in table.items()}
 
 

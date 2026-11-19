@@ -349,3 +349,10 @@ def test_a_hue_exception_moves_only_its_step(built: dict[palette.Mode, palette.P
     moved = palette.build(palette.parse(raw))["dark"]["red"]
     assert moved[2] != built["dark"]["red"][2]
     assert moved[:2] + moved[3:] == built["dark"]["red"][:2] + built["dark"]["red"][3:]
+
+
+@pytest.mark.parametrize("step", ["1", "12"])
+def test_a_hue_exception_may_move_the_first_and_last_step(step: str) -> None:
+    raw = _raw()
+    raw["hue"]["red"]["dark"] = {step: 0.5}
+    assert palette.parse(raw).hues["red"].lightness["dark"] == {int(step): 0.5}
