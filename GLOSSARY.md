@@ -39,8 +39,8 @@ curve. The palette tokens are generated from it and never edited by hand.
 ### Base colour
 
 A colour the palette carries a scale of: the neutral, or one of the hues blue, green, teal, yellow, orange, red and
-violet. A base colour names a family, not one colour; its scale holds the colours. Adding one is a line in the
-**parameter file**, made when a port needs it.
+violet. A base colour names a family, not one colour; its scale holds the colours. Adding one is a table in the
+**parameter file** (the tests and the README list the base colours too), made when a port needs it.
 
 ### Named colour
 
@@ -78,8 +78,9 @@ set for each mode on its own, never derived by inverting the other.
 ### Role
 
 A general UI meaning, such as `text-muted` or `accent`, defined per mode as a reference to a palette step. copper has a
-small, fixed set: backgrounds (`bg`, `bg-alt`, `surface`, `surface-raised`), `border`, text (`text`, `text-muted`,
-`text-subtle`), `accent`, `on-accent`, `selection` and the states `success`, `warning`, `error`, `info`
+small, fixed set: backgrounds (`bg`, `bg-alt`, `surface`, `surface-raised`), borders (`border`, the quiet edge of cards
+and dividers, and `border-strong`, the edge that identifies a control), text (`text`, `text-muted`, `text-subtle`),
+`accent`, `on-accent`, `selection` and the states `success`, `warning`, `error`, `info`
 ([ADR-0005](docs/adr/0005-named-colours-and-general-roles.md)). A role may point to a different step in each mode where
 the two work differently. Role names say what a colour is for in any interface, never which consumer, domain or person
 uses it.
@@ -99,4 +100,5 @@ committed under `ports/<target>/`. It is never edited by hand; it equals what th
 
 A colour of one consumer's own, such as a dashboard card's tint, a calendar's colours or the colour of an app's launcher
 icon. It stays with that consumer and is defined there by reference to **named colours** or roles. When a second
-consumer needs it, it moves here as a named colour or a general role, never as a role named for its domain.
+consumer needs it, a general UI meaning becomes a role here; a domain meaning stays with each consumer, which picks it
+from the named colours, and a colour the palette lacks is added as a **base colour**.

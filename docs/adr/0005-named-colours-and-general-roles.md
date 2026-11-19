@@ -25,15 +25,17 @@ only make sense inside one app, and every new domain colour a change and a relea
 
 - Each base colour has a main value per mode under its plain name (`blue`, step 9) and its 12 steps (`blue-1` …
   `blue-12`): the named colours.
-- The roles are general UI meanings: backgrounds (`bg`, `bg-alt`, `surface`, `surface-raised`), `border`, text (`text`,
-  `text-muted`, `text-subtle`), `accent`, `on-accent`, `selection` and the states `success`, `warning`, `error`, `info`.
-  Each is a reference to a palette step per mode.
+- The roles are general UI meanings: backgrounds (`bg`, `bg-alt`, `surface`, `surface-raised`), borders (`border`,
+  `border-strong`), text (`text`, `text-muted`, `text-subtle`), `accent`, `on-accent`, `selection` and the states
+  `success`, `warning`, `error`, `info`. Each is a reference to a palette step per mode.
 - Domain colours — a calendar's colours, a weather scale, a dashboard's lit-light fill — are component colours of the
   app that uses them, picked there from the named colours.
 
-This narrows ADR-0001's roles from "meanings two consumers share" to general UI meanings. ADR-0001's rule that a
-component colour moves here once a second consumer needs it now moves it here as a named colour or a new general role,
-not as a domain role.
+This narrows ADR-0001's roles from "meanings two consumers share" to general UI meanings. When a second consumer needs a
+component colour, a general UI meaning becomes a role here; a domain meaning stays with each consumer, which picks it
+from the named colours, and a colour the palette lacks is added as a base colour. For colours this also narrows
+[ADR-0004](0004-design-system-step-by-step.md)'s rule that what two or more consumers share lives here: of a shared
+domain meaning, only the named colour it is picked from lives here.
 
 ## Consequences
 

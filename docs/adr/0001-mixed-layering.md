@@ -59,7 +59,7 @@ where the icon file lives is decided under ADR-0004.
 ## Amendment — roles are general UI roles
 
 [ADR-0005](0005-named-colours-and-general-roles.md) narrows the second layer: the roles are a small set of general UI
-meanings (backgrounds, border, text, accent, selection, states), beside the named colours — each base colour's main
-value and its steps. A meaning two consumers share but that belongs to their domain, such as a calendar's colours, is
-not a role; each consumer picks it from the named colours. A component colour a second consumer needs moves here as a
-named colour or a general role.
+meanings (backgrounds, borders, text, accent, selection, states), beside the named colours — each base colour's main
+value and its steps. When a second consumer needs a component colour, a general UI meaning becomes a role; a domain
+meaning, such as a calendar's colours, stays with each consumer, which picks it from the named colours, and a colour the
+palette lacks is added as a base colour.

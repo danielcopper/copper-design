@@ -1,9 +1,11 @@
 # copper-design
 
 copper is one design system for several consumers (a Home Assistant theme, Android apps, terminal and self-hosted app
-themes), filled step by step ([ADR-0004](docs/adr/0004-design-system-step-by-step.md)). For colours this repository will
-hold the palette and the shared roles as DTCG 2025.10 JSON per mode, the Python generator that renders them through
-Jinja2 templates, and the generic ports it produces under `ports/<target>/`. Consumers pin a release.
+themes), filled step by step ([ADR-0004](docs/adr/0004-design-system-step-by-step.md)). For colours this repository
+holds the palette, the named colours and a small set of general UI roles
+([ADR-0005](docs/adr/0005-named-colours-and-general-roles.md)) as DTCG 2025.10 JSON per mode, the Python generator that
+renders them through Jinja2 templates, and the generic ports it produces under `ports/<target>/`. Consumers pin a
+release.
 
 The terms are in [GLOSSARY.md](GLOSSARY.md); use them, and update an entry when a term's meaning changes. The decisions
 are in [docs/adr/](docs/adr/).
@@ -22,8 +24,9 @@ review.
 ## Pipeline
 
 - **Gate**: `mise run gate` (tests, ruff check and format, basedpyright, `deno fmt --check`, markdownlint): what CI
-  checks on a pull request, less the Python 3.12 and 3.13 test legs, the SonarQube Cloud gate, the PR title and the
-  `decisions` check. On a fresh checkout or worktree `mise trust && mise run setup` first.
+  checks on a pull request, less the Python 3.12 and 3.13 test legs, the `package` job (it builds the wheel and runs the
+  installed generator), the SonarQube Cloud gate, the PR title and the `decisions` check. On a fresh checkout or
+  worktree `mise trust && mise run setup` first.
 - **Review checks**: `ruff check <files>`, `ruff format --check <files>`, `basedpyright <files>`,
   `deno fmt --check <files>`
 - **Worktree task**: `mise run worktree-new` (a global mise task from the owner's dotfiles, not in this repository)
