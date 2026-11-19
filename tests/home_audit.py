@@ -5,8 +5,9 @@ the suite points elsewhere and a child run inherits. The hook looks at the path
 arguments of the calls in EVENTS: those that open a file or a database, read a
 directory, or create, write, move or remove one. It places a path given
 relative to a directory descriptor through /proc/self/fd and skips one it
-cannot place there (no /proc, or ``os.open`` with ``dir_fd``, whose audit event
-carries no descriptor). It records an access under the real home outside the
+cannot place there (no /proc). ``os.open`` with ``dir_fd`` raises an audit
+event without the descriptor, so its relative path is judged against the
+current directory. It records an access under the real home outside the
 paths the run itself lives in, and it never raises: a path it cannot resolve is
 judged by its text, one it cannot even read is skipped. Child processes are not
 watched; they inherit the temporary HOME.

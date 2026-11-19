@@ -241,7 +241,8 @@ _PACKAGE_STEP_INPUTS = [
     [],
 ]
 # ci.yml's own keys and its workflow-level env: no `defaults` (a shell or a
-# working directory for every run) and no variable reaches the package job.
+# working directory for every run), and no variable beyond PYTHON_VERSION,
+# which reaches the package job too but which it does not read.
 _WORKFLOW_KEYS = ["name", "on", "concurrency", "permissions", "env", "jobs"]
 _WORKFLOW_ENV = ['PYTHON_VERSION: "3.14"']
 

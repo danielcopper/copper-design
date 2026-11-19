@@ -42,8 +42,9 @@ _UNREMOVED: list[str] = []
 
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session: pytest.Session) -> None:
-    # Last of all session-end hooks, so their accesses count too; anything later
-    # (the terminal summary) is not counted.
+    # After the other plugins' plain session-end hooks (trylast), so their
+    # accesses count too; what runs later (the after-yield part of a hook
+    # wrapper, the terminal summary) is not counted.
     for home in _TEMPORARY_HOMES:
         shutil.rmtree(home, onexc=lambda _function, path, error: _UNREMOVED.append(f"{path}: {error}"))
     if _AUDIT.touched:

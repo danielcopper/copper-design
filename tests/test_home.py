@@ -14,8 +14,6 @@ from pathlib import Path
 import pytest
 from home_audit import REAL_HOME, ROOT, HomeAudit, allowed_roots, check_roots
 
-_ROOT = ROOT
-
 
 def test_the_suite_runs_with_a_home_of_its_own() -> None:
     assert Path.home().resolve() != REAL_HOME
@@ -26,16 +24,16 @@ def test_the_suite_runs_with_a_home_of_its_own() -> None:
 def test_the_audit_flags_paths_under_the_real_home_only(home_audit: HomeAudit) -> None:
     assert home_audit.strays(REAL_HOME / ".config" / "some-app" / "settings.json")
     assert home_audit.strays(str(REAL_HOME))
-    assert not home_audit.strays(_ROOT / "pyproject.toml")
+    assert not home_audit.strays(ROOT / "pyproject.toml")
     assert not home_audit.strays(Path(os.environ["HOME"]) / "file")
     assert not home_audit.strays(3)
     assert not home_audit.strays("a\0b")
 
 
 def test_the_audit_records_an_access_it_flags() -> None:
-    audit = HomeAudit(REAL_HOME, (_ROOT,))
+    audit = HomeAudit(REAL_HOME, (ROOT,))
     audit.hook("open", (str(REAL_HOME / ".bashrc"), "r", 0))
-    audit.hook("open", (str(_ROOT / "README.md"), "r", 0))
+    audit.hook("open", (str(ROOT / "README.md"), "r", 0))
     audit.hook("os.chdir", (str(REAL_HOME),))
     assert audit.touched == [f"open {str(REAL_HOME / '.bashrc')!r}"]
 
@@ -55,9 +53,9 @@ def test_the_real_home_is_the_accounts_not_homes(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("event", "args"),
     [
-        ("os.rename", (str(_ROOT / "a"), str(REAL_HOME / "b"), None, None)),
-        ("os.symlink", (str(_ROOT / "a"), str(REAL_HOME / "b"), None)),
-        ("os.link", (str(_ROOT / "a"), str(REAL_HOME / "b"), None, None)),
+        ("os.rename", (str(ROOT / "a"), str(REAL_HOME / "b"), None, None)),
+        ("os.symlink", (str(ROOT / "a"), str(REAL_HOME / "b"), None)),
+        ("os.link", (str(ROOT / "a"), str(REAL_HOME / "b"), None, None)),
         ("os.chmod", (str(REAL_HOME / "b"), 0o600, None)),
         ("os.chown", (str(REAL_HOME / "b"), 0, 0, None)),
         ("os.utime", (str(REAL_HOME / "b"), None, None, None)),
@@ -75,8 +73,8 @@ def test_the_real_home_is_the_accounts_not_homes(tmp_path: Path) -> None:
         ("sqlite3.connect", (str(REAL_HOME / "b.db"),)),
     ],
 )
-def test_the_audit_sees_every_path_a_call_writes(event: str, args: tuple[object, ...]) -> None:
-    audit = HomeAudit(REAL_HOME, (_ROOT,))
+def test_the_audit_sees_every_path_a_call_reads_or_writes(event: str, args: tuple[object, ...]) -> None:
+    audit = HomeAudit(REAL_HOME, (ROOT,))
     audit.hook(event, args)
     assert audit.touched, f"{event} {args} went unrecorded"
 
@@ -97,7 +95,7 @@ def test_an_allowed_root_holding_the_real_home_is_refused() -> None:
     check_roots(REAL_HOME, allowed_roots())
     for root in (REAL_HOME, REAL_HOME.parent, Path("/")):
         with pytest.raises(ValueError, match="would allow all of the real home"):
-            check_roots(REAL_HOME, (_ROOT, root))
+            check_roots(REAL_HOME, (ROOT, root))
 
 
 def _suite_copy(pytester: pytest.Pytester) -> None:
@@ -135,7 +133,7 @@ class _BrokenPath:
 
 
 def test_the_audit_never_raises_on_a_path_it_cannot_read() -> None:
-    audit = HomeAudit(REAL_HOME, (_ROOT,))
+    audit = HomeAudit(REAL_HOME, (ROOT,))
     audit.hook("open", (_BrokenPath(), "r", 0))
     assert audit.touched == []
 
@@ -170,25 +168,31 @@ def test_an_access_in_another_plugins_session_end_still_fails_the_run(pytester: 
     assert result.ret == pytest.ExitCode.TESTS_FAILED, result.outlines
 
 
+def _unlock_and_remove(record: Path) -> None:
+    """Remove a probe's locked temporary home, if the probe got as far as recording it."""
+    if not record.exists():
+        return
+    home = Path(record.read_text(encoding="utf-8"))
+    temporary_home = home.parent
+    assert temporary_home.name.startswith("copper-design-home-"), temporary_home
+    (home / "locked").chmod(stat.S_IRWXU)
+    shutil.rmtree(temporary_home)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root removes a read-only directory's files anyway")
 def test_a_temporary_home_that_cannot_be_removed_is_reported(pytester: pytest.Pytester) -> None:
     _suite_copy(pytester)
     pytester.makepyfile(
         test_probe=(
             "from pathlib import Path\n\n"
             "def test_probe() -> None:\n"
+            "    (Path(__file__).parent / 'home.txt').write_text(str(Path.home()))\n"
             "    locked = Path.home() / 'locked'\n"
             "    locked.mkdir(parents=True)\n"
             "    (locked / 'file').write_text('x')\n"
             "    locked.chmod(0o500)\n"
-            "    (Path(__file__).parent / 'home.txt').write_text(str(Path.home()))\n"
         )
     )
-    try:
-        result = pytester.runpytest_subprocess("-p", "no:cacheprovider")
-    finally:
-        home = Path((pytester.path / "home.txt").read_text())
-        (home / "locked").chmod(stat.S_IRWXU)
-        temporary_home = home.parent
-        assert temporary_home.name.startswith("copper-design-home-")
-        shutil.rmtree(temporary_home)
+    result = pytester.runpytest_subprocess("-p", "no:cacheprovider")
+    _unlock_and_remove(pytester.path / "home.txt")
     assert any(line.startswith("could not remove the temporary home") for line in result.outlines), result.outlines

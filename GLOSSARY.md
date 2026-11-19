@@ -39,8 +39,8 @@ curve. The palette tokens are generated from it and never edited by hand.
 ### Base colour
 
 A colour the palette carries a scale of: the neutral, or one of the hues blue, green, teal, yellow, orange, red and
-violet. A base colour names a family, not one colour; its scale holds the colours. Adding one is a table in the
-**parameter file**, made when a port needs it.
+violet. A base colour names a family, not one colour; its scale holds the colours. One is added when a port needs it;
+the **parameter file** lists what that takes.
 
 ### Named colour
 
