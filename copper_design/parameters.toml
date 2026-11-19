@@ -38,9 +38,10 @@ lightness = [0.190, 0.225, 0.270, 0.310, 0.350, 0.400, 0.480, 0.640, 0.760, 0.79
 chroma = [0.120, 0.168, 0.264, 0.360, 0.456, 0.552, 0.672, 0.864, 1.00, 0.95, 0.80, 0.35]
 
 # The hues: OKLCH hue angle (degrees) and peak chroma, and per mode the steps
-# whose lightness leaves the shared curve (step = lightness). Blue leans to petrol
-# and red to rose, as in Rosé Pine. Teal sits between green and blue by hue and apart from blue by
-# lightness: its solid steps (9-10) are lighter, so the two never meet. Yellow and
+# whose lightness leaves the shared curve (step = lightness). Blue leans to
+# petrol and red to rose, as in Rosé Pine. Teal sits between green and blue by
+# hue and apart from blue by lightness: its solid steps (9-10) are lighter, so
+# the two never meet. Yellow and
 # orange lift their solid steps: yellow far enough to carry dark text, orange only
 # part of the way, so in light mode neither dark nor light text reaches 4.5:1 on
 # orange's solid fill. Light blue is a darker petrol under light text. In light

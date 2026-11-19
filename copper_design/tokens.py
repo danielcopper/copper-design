@@ -264,7 +264,7 @@ def _children(group: dict[str, Any], where: str) -> list[str]:
 
 
 def _check_child(name: str, node: object, path: str, top_level: bool) -> None:
-    """A child of a group: an object, a root token only inside a group, a name the ports can carry."""
+    """A child of a group: an object, a name the ports can carry, a root token only inside a group and with a $value."""
     if not isinstance(node, dict):
         raise TokenError(f"{path}: neither a token nor a group")
     if name == _ROOT and top_level:

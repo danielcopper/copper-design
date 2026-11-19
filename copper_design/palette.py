@@ -2,8 +2,8 @@
 
 Each base colour gets a scale of 12 steps per mode: the neutral from curves of
 its own, every hue from the shared lightness and chroma curves of its mode, its
-own hue angle and peak chroma, and the steps whose lightness it moves. Each step is
-set in OKLCH and fitted into sRGB.
+own hue angle and peak chroma, and the steps whose lightness it moves. Each step
+is set in OKLCH and fitted into sRGB.
 
 The parameter file is checked as a whole before anything is computed: an
 unknown key, a missing one, a value of the wrong type or out of range raises a
