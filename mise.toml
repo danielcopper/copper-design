@@ -11,9 +11,10 @@ description = "Install the locked dev deps into the local venv"
 # The same command as every install in .github/workflows/ci.yml, so local and CI
 # runs use the same versions. --locked fails when uv.lock is out of date with
 # pyproject.toml (`mise run lock` rewrites it); --no-build takes wheels only, so
-# no package's build script runs. That leaves out the project itself, which
-# only exists as source: the tests import it from the tree (pyproject's
-# `pythonpath`), so it needs no install.
+# no package's build script runs; --extra dev is pyproject's `dev` extra, the
+# checkers and pytest. --no-install-project leaves out the project itself: it
+# exists only as source, so --no-build would refuse it, and the tests import it
+# from the tree (pyproject's `pythonpath`).
 run = "uv sync --locked --no-build --no-install-project --extra dev"
 
 [tasks.lock]
