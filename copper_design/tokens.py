@@ -111,32 +111,38 @@ def _merge(into: dict[str, Any], document: dict[str, Any]) -> None:
             into[key] = json.loads(json.dumps(value))
 
 
-def merged(inputs: dict[str, str]) -> dict[str, Any]:
-    """The token tree the resolver selects for the given inputs, references not yet resolved."""
-    resolver = _read(RESOLVER)
-    if resolver.get("version") != "2025.10":
-        raise TokenError(f"{RESOLVER}: version must be 2025.10")
-    modifiers: dict[str, Any] = resolver.get("modifiers", {})
+def _check_inputs(modifiers: dict[str, Any], inputs: dict[str, str]) -> None:
     for name, context in inputs.items():
         if name not in modifiers:
             raise TokenError(f"unknown modifier {name!r}")
         if context not in modifiers[name]["contexts"]:
             raise TokenError(f"invalid context {context!r} for modifier {name!r}")
+
+
+def _selected(resolver: dict[str, Any], item: dict[str, Any], inputs: dict[str, str]) -> list[dict[str, Any]]:
+    """The token documents one resolution-order item contributes: a set's, or a modifier's selected context's."""
+    ref = item.get("$ref", "")
+    if ref.startswith("#/sets/"):
+        return _sources(resolver, _pointer(resolver, ref)["sources"])
+    if not ref.startswith("#/modifiers/"):
+        raise TokenError(f"{RESOLVER}: resolutionOrder holds {item!r}, not a reference to a set or modifier")
+    name = ref.removeprefix("#/modifiers/")
+    modifier = _pointer(resolver, ref)
+    context = inputs.get(name, modifier.get("default"))
+    if context is None:
+        raise TokenError(f"missing modifier {name!r}")
+    return _sources(resolver, modifier["contexts"][context])
+
+
+def merged(inputs: dict[str, str]) -> dict[str, Any]:
+    """The token tree the resolver selects for the given inputs, references not yet resolved."""
+    resolver = _read(RESOLVER)
+    if resolver.get("version") != "2025.10":
+        raise TokenError(f"{RESOLVER}: version must be 2025.10")
+    _check_inputs(resolver.get("modifiers", {}), inputs)
     tree: dict[str, Any] = {}
     for item in resolver["resolutionOrder"]:
-        ref = item.get("$ref", "")
-        if ref.startswith("#/sets/"):
-            documents = _sources(resolver, _pointer(resolver, ref)["sources"])
-        elif ref.startswith("#/modifiers/"):
-            name = ref.removeprefix("#/modifiers/")
-            modifier = _pointer(resolver, ref)
-            context = inputs.get(name, modifier.get("default"))
-            if context is None:
-                raise TokenError(f"missing modifier {name!r}")
-            documents = _sources(resolver, modifier["contexts"][context])
-        else:
-            raise TokenError(f"{RESOLVER}: resolutionOrder holds {item!r}, not a reference to a set or modifier")
-        for document in documents:
+        for document in _selected(resolver, item, inputs):
             _merge(tree, document)
     return tree
 

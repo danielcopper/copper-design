@@ -7,6 +7,8 @@ modifier selects the light or the dark files.
 
 import json
 import re
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -150,3 +152,65 @@ def test_a_name_with_a_period_is_refused() -> None:
 def test_a_colour_that_is_no_valid_colour_object_is_refused(value: object, message: str) -> None:
     with pytest.raises(tokens.TokenError, match=message):
         tokens.check_colour("red.1", value)
+
+
+def _colour(red: float) -> dict[str, Any]:
+    return {"$type": "color", "$value": {"colorSpace": "srgb", "components": [red, 0, 0]}}
+
+
+type WriteResolver = Callable[..., None]
+
+
+@pytest.fixture
+def resolver_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> WriteResolver:
+    """A token directory of the test's own: the fixture writes its resolver and token files."""
+    monkeypatch.setattr(tokens, "directory", lambda: tmp_path)
+
+    def write(resolver: dict[str, Any], **files: object) -> None:
+        (tmp_path / tokens.RESOLVER).write_text(json.dumps({"version": "2025.10", **resolver}), encoding="utf-8")
+        for name, document in files.items():
+            (tmp_path / f"{name}.json").write_text(json.dumps(document), encoding="utf-8")
+
+    return write
+
+
+def test_sets_and_contexts_merge_in_order_with_the_last_token_winning(resolver_dir: WriteResolver) -> None:
+    resolver_dir(
+        {
+            "sets": {"base": {"sources": [{"$ref": "base.json"}, {"b": _colour(0.2)}]}},
+            "modifiers": {
+                "mode": {"contexts": {"light": [{"a": _colour(0.5)}], "dark": [{"a": _colour(0.9)}]}, "default": "dark"}
+            },
+            "resolutionOrder": [{"$ref": "#/sets/base"}, {"$ref": "#/modifiers/mode"}],
+        },
+        base={"a": _colour(0.1), "b": _colour(0.1), "c": _colour(0.1)},
+    )
+    tree = tokens.merged({})
+    assert {name: token["$value"]["components"][0] for name, token in tree.items()} == {"a": 0.9, "b": 0.2, "c": 0.1}
+    assert tokens.merged({"mode": "light"})["a"]["$value"]["components"][0] == 0.5
+
+
+@pytest.mark.parametrize(
+    ("resolver", "message"),
+    [
+        ({"version": "2025.06", "resolutionOrder": []}, "version must be 2025.10"),
+        ({"resolutionOrder": [{"$ref": "#/sets/missing"}]}, "#/sets/missing points nowhere"),
+        ({"resolutionOrder": [{"name": "inline", "type": "set", "sources": []}]}, "not a reference to a set"),
+        (
+            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "absent.json"}]}}},
+            "absent.json: no such token file",
+        ),
+        (
+            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "#/modifiers/m"}]}}},
+            "a source may point at a set or a file, not #/modifiers/m",
+        ),
+        (
+            {"resolutionOrder": [{"$ref": "#/sets/s"}], "sets": {"s": {"sources": [{"$ref": "list.json"}]}}},
+            "list.json: not a JSON object",
+        ),
+    ],
+)
+def test_a_broken_resolver_is_refused(resolver_dir: WriteResolver, resolver: dict[str, Any], message: str) -> None:
+    resolver_dir(resolver, list=[])
+    with pytest.raises(tokens.TokenError, match=re.escape(message)):
+        tokens.merged({})
