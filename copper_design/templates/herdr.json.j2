@@ -15,18 +15,19 @@
   "neutral-9", "red-11", "green-11", "yellow-10", "blue-11", "violet-11", "teal-10", "neutral-12",
 ] -%}
 {%- endif -%}
+{%- set dim = "text-subtle" if mode == "light" else "neutral-10" -%}
 {%- set panel = [
   ("foreground", "text"),
   ("muted", "text-muted"),
-  ("dim", "text-subtle"),
+  ("dim", dim),
   ("solid", "text"),
   ("accent", "accent"),
   ("accent_foreground", "on-accent"),
   ("working", "warning"),
   ("blocked", "error"),
   ("done", "success"),
-  ("idle", "text-subtle"),
-  ("unknown", "text-subtle"),
+  ("idle", dim),
+  ("unknown", dim),
 ] -%}
 {
   "background": {{ c["surface"] | tojson }},

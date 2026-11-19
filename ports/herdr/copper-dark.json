@@ -24,14 +24,14 @@
   "colors": {
     "foreground": "#e0def4",
     "muted": "#aaa7c5",
-    "dim": "#8885a3",
+    "dim": "#9794b2",
     "solid": "#e0def4",
     "accent": "#71b8f4",
     "accent_foreground": "#0f1519",
     "working": "#eea67d",
     "blocked": "#ee91a9",
     "done": "#94bf8a",
-    "idle": "#8885a3",
-    "unknown": "#8885a3"
+    "idle": "#9794b2",
+    "unknown": "#9794b2"
   }
 }

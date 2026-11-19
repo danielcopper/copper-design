@@ -23,15 +23,18 @@ as herdr's own themes do (issue 12, D1), and sets only what carries meaning:
   accent, that herdr draws as the hover edge of a choice the accent does not
   mark and hands to mods as their ``ring``.
 - the agent states: ``working``, ``blocked`` and ``done`` are ``warning``,
-  ``error`` and ``success``; ``idle`` and ``unknown`` are ``text-subtle``, as
-  ``dim``, since herdr derives them as its own dim grey.
-- the panels' text (issue 12, D2), so it matches the terminal's: ``foreground`` and
-  ``solid`` (a solid button's fill) are ``text``, ``muted`` is ``text-muted``,
-  ``dim`` is ``text-subtle``. Each reaches 4.5:1, its kind's need
-  (copper_design.contrast), on every opaque surface herdr derives, except the
-  pairs ``_SHORT_ON_A_SURFACE`` names, still open; the text on a solid button, ``solid_foreground``, stays
-  herdr's (white in light mode, the background darkened in dark mode) and
-  reaches 4.5:1 on ``text``.
+  ``error`` and ``success``; ``idle`` and ``unknown`` take ``dim``'s colour,
+  since herdr derives them as its own dim grey.
+- the panels' text (issue 12, D2 and D3), so it matches the terminal's:
+  ``foreground`` and ``solid`` (a solid button's fill) are ``text``, ``muted``
+  is ``text-muted``, ``dim`` is ``text-subtle`` in light mode. In dark mode
+  ``dim`` is neutral step 10, a step above ``text-subtle``: herdr lifts its dark
+  popover and raised surfaces toward white, and ``text-subtle`` falls below
+  4.5:1 on them. Each reaches 4.5:1, its kind's need (copper_design.contrast),
+  on every opaque surface herdr derives; light neutral step 10 is set so that
+  ``text-subtle`` reaches it on herdr's light chrome (parameters.toml). The
+  text on a solid button, ``solid_foreground``, stays herdr's (white in light
+  mode, the background darkened in dark mode) and reaches 4.5:1 on ``text``.
 
 The ANSI colours:
 
@@ -134,13 +137,6 @@ _LEFT_TO_HERDR = {
 _PANEL_TEXT = ("foreground", "muted", "dim")
 """The panels' text keys the theme sets; herdr draws them on its derived surfaces."""
 
-_OPEN = "open (issue 12): whether the panels' dim text takes a stronger step than text-subtle"
-# (mode, text key, derived surface): why it may stay below 4.5:1.
-_SHORT_ON_A_SURFACE = {
-    ("dark", "dim", "popover"): f"{_OPEN}; herdr lifts the dark popover 6% toward white",
-    ("dark", "dim", "raised"): f"{_OPEN}; herdr lifts the dark raised surface 9% toward white",
-}
-
 
 def _theme(mode: palette.Mode) -> dict[str, Any]:
     return json.loads((_ROOT / "ports" / "herdr" / f"copper-{mode}.json").read_text(encoding="utf-8"))
@@ -228,23 +224,13 @@ def test_the_chrome_and_the_canvas_herdr_derives_stand_apart_from_the_terminal(m
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_the_panel_text_reaches_4_5_on_every_surface_herdr_derives(mode: palette.Mode) -> None:
     resolved = herdr.resolve(_theme(mode))
-    ratios = {
-        (key, surface): Color(resolved[key]).contrast(resolved[surface])
-        for key in _PANEL_TEXT
-        for surface in herdr.SURFACES
-    }
     short = {
         f"{key} {resolved[key]} on {surface} {resolved[surface]}": round(ratio, 2)
-        for (key, surface), ratio in ratios.items()
-        if ratio < 4.5 and (mode, key, surface) not in _SHORT_ON_A_SURFACE
+        for key in _PANEL_TEXT
+        for surface in herdr.SURFACES
+        if (ratio := Color(resolved[key]).contrast(resolved[surface])) < 4.5
     }
     assert not short, f"{mode}: below 4.5:1: {short}"
-    stale = [
-        (key, surface)
-        for (short_mode, key, surface) in _SHORT_ON_A_SURFACE
-        if short_mode == mode and ratios[key, surface] >= 4.5
-    ]
-    assert not stale, f"{mode}: these reach 4.5:1 now; drop their exception: {stale}"
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
@@ -259,3 +245,9 @@ def test_the_fill_grey_stands_apart_from_the_background(mode: palette.Mode) -> N
     theme = _theme(mode)
     (fill,) = [theme["ansi"][i] for fill_mode, i in _FILL_GREYS if fill_mode == mode]
     assert Color(fill).contrast(theme["background"]) >= 1.1
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_idle_and_unknown_take_dims_colour(mode: palette.Mode) -> None:
+    colors = _theme(mode)["colors"]
+    assert colors["idle"] == colors["unknown"] == colors["dim"]
