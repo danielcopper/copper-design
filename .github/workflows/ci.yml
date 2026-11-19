@@ -63,6 +63,44 @@ jobs:
       - name: Type-check (basedpyright)
         run: basedpyright
 
+  # Builds the wheel, installs it into a clean venv as a consumer would, and
+  # renders the ports and the swatch there over the checkout: the package has to
+  # carry its parameter file, token files and templates, and an installed
+  # generator has to render exactly what is committed. Its installs are not
+  # `setup`'s, which leaves the project out: the runtime deps come from uv.lock
+  # with their hashes, then the wheel without deps (tests/test_ci_install.py
+  # pins both). It runs on pyproject's requires-python floor, the oldest
+  # interpreter a consumer may use.
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"  # pyproject's requires-python floor
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.10.2"  # mise.toml's uv
+          python-version: "3.12"
+      - name: Build the wheel
+        run: uv build --wheel --out-dir dist
+      - name: Install the wheel into a clean venv
+        run: |
+          uv export --locked --no-emit-project --output-file /tmp/runtime.txt
+          uv venv /tmp/clean
+          uv pip install --python /tmp/clean --no-build --require-hashes --requirements /tmp/runtime.txt
+          uv pip install --python /tmp/clean --no-build --no-deps dist/*.whl
+      - name: Render from the installed package and compare with the committed files
+        # From outside the checkout and isolated (-I), so the import cannot
+        # come from the tree; then the checkout must be unchanged.
+        working-directory: /tmp
+        run: |
+          /tmp/clean/bin/python -I -c "import copper_design; assert copper_design.__file__.startswith('/tmp/clean/'), copper_design.__file__"
+          /tmp/clean/bin/python -I -m copper_design render --root "$GITHUB_WORKSPACE"
+          git -C "$GITHUB_WORKSPACE" status --porcelain
+          test -z "$(git -C "$GITHUB_WORKSPACE" status --porcelain)"
+
   markdownlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5

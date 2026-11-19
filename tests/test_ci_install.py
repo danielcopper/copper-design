@@ -8,6 +8,12 @@ that the scan's sources hold the workflows and pyproject.toml apart from the
 tests. Why each flag is there is in mise.toml's `setup` task; why the scan reads
 those paths is in sonar-project.properties.
 
+One job is the exception: ci.yml's `package` installs the built wheel into a
+clean venv, as a consumer would, so `setup`'s command, which leaves the project
+out, cannot serve it. Its installs are pinned here instead: the runtime deps
+exported from uv.lock and installed with their hashes, then the wheel without
+deps, both wheels only.
+
 The workflows are read line by line, not as YAML: a job is a key two spaces in
 under `jobs:`, a step a list item under its `steps:`, which is how every
 workflow here is written.
@@ -33,6 +39,12 @@ _INSTALLER = re.compile(
 _PYTHON_TOOLS = re.compile(r"astral-sh/setup-uv@|\bpython\s+-m\b|\bpytest\b|\bruff\s|\bbasedpyright\b")
 _JOB = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 _SETUP_UV = "astral-sh/setup-uv@"
+_PACKAGE_JOB = "ci.yml:package"
+_PACKAGE_EXPORT = "uv export --locked --no-emit-project --output-file /tmp/runtime.txt"
+_PACKAGE_INSTALLS = [
+    "uv pip install --python /tmp/clean --no-build --require-hashes --requirements /tmp/runtime.txt",
+    "uv pip install --python /tmp/clean --no-build --no-deps dist/*.whl",
+]
 
 
 def _mise() -> dict[str, Any]:
@@ -116,17 +128,45 @@ def test_the_setup_command_installs_the_locked_dev_wheels_only() -> None:
 
 
 def test_every_ci_install_runs_the_setup_command() -> None:
-    commands = [(name, text) for name, line in _workflow_lines() if _INSTALLER.search(text := _code(line))]
-    assert any(name == "ci.yml" for name, _ in commands), "ci.yml installs nothing"
+    commands = [
+        (job, text)
+        for job, lines in _jobs().items()
+        if job != _PACKAGE_JOB
+        for line in lines
+        if _INSTALLER.search(text := _code(line))
+    ]
+    assert any(job.startswith("ci.yml:") for job, _ in commands), "ci.yml installs nothing"
     setup = _setup_command()
-    strays = [f"{name}: {text}" for name, text in commands if text != setup]
+    strays = [f"{job}: {text}" for job, text in commands if text != setup]
     assert not strays, f"installs other than `{setup}`: {strays}"
+
+
+def test_every_workflow_install_is_in_a_job() -> None:
+    # The test above reads jobs; an install outside one (a workflow-level key)
+    # would slip past it.
+    in_jobs = sum(1 for lines in _jobs().values() for line in lines if _INSTALLER.search(_code(line)))
+    everywhere = sum(1 for _, line in _workflow_lines() if _INSTALLER.search(_code(line)))
+    assert in_jobs == everywhere
+
+
+def test_the_package_job_installs_the_wheel_with_the_locked_runtime_deps() -> None:
+    lines = [_code(line) for line in _jobs()[_PACKAGE_JOB]]
+    assert [line for line in lines if _INSTALLER.search(line)] == _PACKAGE_INSTALLS
+    # The requirements come from uv.lock, which --locked holds to pyproject, and
+    # carry their hashes (uv export writes them unless told --no-hashes).
+    assert _PACKAGE_EXPORT in lines
+    assert lines.index(_PACKAGE_EXPORT) < lines.index(_PACKAGE_INSTALLS[0])
+    for install in _PACKAGE_INSTALLS:
+        assert "--no-build" in install.split()
+        assert "--python /tmp/clean" in install, "not into the clean venv"
 
 
 def test_every_job_running_python_tools_installs_with_the_setup_command() -> None:
     setup = _setup_command()
     python_jobs = {
-        name: lines for name, lines in _jobs().items() if any(_PYTHON_TOOLS.search(_code(line)) for line in lines)
+        name: lines
+        for name, lines in _jobs().items()
+        if name != _PACKAGE_JOB and any(_PYTHON_TOOLS.search(_code(line)) for line in lines)
     }
     assert python_jobs, "no workflow job runs Python tools"
     missing = [name for name, lines in python_jobs.items() if not any(_code(line) == setup for line in lines)]
