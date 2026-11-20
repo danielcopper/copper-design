@@ -53,8 +53,7 @@ def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[s
 
 def herdr_data(theme: Mapping[str, Any]) -> dict[str, Any]:
     """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and per ground in
-    copper_design.herdr's PAIRS (the surfaces herdr derives, then a solid button's fill) the checks of the text on
-    it."""
+    copper_design.herdr's PAIRS the checks of the text on it."""
     resolved = herdr.resolve(theme)
     set_by_theme = herdr.set_by_theme(theme)
     grounds = list(dict.fromkeys(ground for _, ground in herdr.PAIRS))
