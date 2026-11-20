@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/danielcopper/copper-design/compare/v0.1.0...v0.2.0) (2026-11-20)
+
+
+### Features
+
+* add the Android port with a Material 3 colour scheme ([#11](https://github.com/danielcopper/copper-design/issues/11)) ([55b0a5f](https://github.com/danielcopper/copper-design/commit/55b0a5f406c5a85909bf3962c28f647b6069c3f2)), closes [#10](https://github.com/danielcopper/copper-design/issues/10)
+
+
+### Bug Fixes
+
+* **herdr:** leave the panel colours to herdr's own derivation ([#14](https://github.com/danielcopper/copper-design/issues/14)) ([a7132ae](https://github.com/danielcopper/copper-design/commit/a7132aef76405cc9983bbec37a7df0f817069a1b)), closes [#12](https://github.com/danielcopper/copper-design/issues/12)
+
 ## 0.1.0 (2026-11-19)
 
 
