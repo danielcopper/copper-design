@@ -2,7 +2,8 @@
   A herdr terminal theme. tests/test_herdr.py's docstring holds the rules this
   file follows (what herdr reads, which steps the terminal and ANSI colours take
   and why, which panel colours it sets and which it leaves to herdr), and the
-  tests hold the rendered file to them.
+  tests hold the rendered file to them. The colors mapping, herdr_colors, is
+  copper_design.herdr's COLORS.
 -#}
 {%- if mode == "light" -%}
 {%- set ansi = [
@@ -15,20 +16,6 @@
   "neutral-9", "red-11", "green-11", "yellow-10", "blue-11", "violet-11", "teal-10", "neutral-12",
 ] -%}
 {%- endif -%}
-{%- set dim = "text-subtle" if mode == "light" else "neutral-10" -%}
-{%- set panel = [
-  ("foreground", "text"),
-  ("muted", "text-muted"),
-  ("dim", dim),
-  ("solid", "text"),
-  ("accent", "accent"),
-  ("accent_foreground", "on-accent"),
-  ("working", "warning"),
-  ("blocked", "error"),
-  ("done", "success"),
-  ("idle", dim),
-  ("unknown", dim),
-] -%}
 {
   "background": {{ c["surface"] | tojson }},
   "foreground": {{ c["text"] | tojson }},
@@ -40,7 +27,7 @@
 {%- endfor %}
   ],
   "colors": {
-{%- for key, name in panel %}
+{%- for key, name in herdr_colors %}
     {{ key | tojson }}: {{ c[name] | tojson }}{{ "," if not loop.last }}
 {%- endfor %}
   }

@@ -3,9 +3,11 @@
 herdr 0.1.16 reads ``themes/<name>.json``: ``background``, ``foreground``,
 ``selection`` and an optional ``cursor`` as ``#rrggbb``, ``ansi`` as 16 of them,
 and an optional ``colors`` that overrides its panel colours by name with
-``#rrggbb`` or ``#rrggbbaa``. It takes a theme as light when the background's
-luminance (Rec. 709 weights over the 8-bit channels) is above one half. This
-docstring is the one description of that format here; the template points to it.
+``#rrggbb`` or ``#rrggbbaa``. It takes a theme as light by the background's
+luminance (copper_design.herdr's ``is_light``). This docstring is the one
+description of the theme file's format here, and of the rules the port follows;
+the template points to it, and copper_design.herdr ports how herdr resolves a
+theme.
 
 The port: the terminal is a surface (a pane on the canvas), so its background
 is the ``surface`` role. ANSI order: black, red, green, yellow, blue, magenta
@@ -14,9 +16,10 @@ is the ``surface`` role. ANSI order: black, red, green, yellow, blue, magenta
 herdr derives its panel colours from the terminal background
 (copper_design.herdr ports how): the chrome (sidebars, bars) and the canvas
 (behind cards) step away from it, darker in dark mode and toward a warm grey in
-light mode, popovers and raised surfaces lighter in dark mode, and hover,
-selection, borders and inputs are translucent. ``colors`` leaves those to herdr,
-as herdr's own themes do (issue 12, D1), and sets only what carries meaning:
+light mode, popovers and raised surfaces lighter in dark mode, and hover, the
+selected row (``selected``), borders and inputs are translucent. ``colors``
+leaves those to herdr, as herdr's presets do (issue 12, D1), and sets only what
+carries meaning (copper_design.herdr's ``COLORS``):
 
 - the accent and the text on it: ``accent`` and ``accent_foreground`` are
   ``accent`` and ``on-accent``. ``ring`` stays herdr's: a neutral grey, not the
@@ -24,17 +27,19 @@ as herdr's own themes do (issue 12, D1), and sets only what carries meaning:
   mark and hands to mods as their ``ring``.
 - the agent states: ``working``, ``blocked`` and ``done`` are ``warning``,
   ``error`` and ``success``; ``idle`` and ``unknown`` take ``dim``'s colour,
-  since herdr derives them as its own dim grey.
+  since herdr derives them, like ``dim``, as a grey between its background and
+  its text (in dark mode the same grey as ``dim``).
 - the panels' text (issue 12, D2 and D3), so it matches the terminal's:
   ``foreground`` and ``solid`` (a solid button's fill) are ``text``, ``muted``
   is ``text-muted``, ``dim`` is ``text-subtle`` in light mode. In dark mode
   ``dim`` is neutral step 10, a step above ``text-subtle``: herdr lifts its dark
-  popover and raised surfaces toward white, and ``text-subtle`` falls below
-  4.5:1 on them. Each reaches 4.5:1, its kind's need (copper_design.contrast),
-  on every opaque surface herdr derives; light neutral step 10 is set so that
-  ``text-subtle`` reaches it on herdr's light chrome (parameters.toml). The
-  text on a solid button, ``solid_foreground``, stays herdr's (white in light
-  mode, the background darkened in dark mode) and reaches 4.5:1 on ``text``.
+  popover and raised surfaces toward white, and ``text-subtle`` falls short of
+  the text need (copper_design.contrast) on them. Each reaches it on every
+  opaque surface herdr derives (copper_design.herdr's ``checks``); light
+  neutral step 10 is set so that ``text-subtle`` reaches it on herdr's light
+  chrome (parameters.toml). The text on a solid button, ``solid_foreground``,
+  stays herdr's (white in light mode, the background darkened in dark mode) and
+  reaches it on ``text``.
 
 The ANSI colours:
 
@@ -66,7 +71,7 @@ from typing import Any
 import pytest
 from coloraide import Color
 
-from copper_design import herdr, palette
+from copper_design import contrast, herdr, palette, tokens
 
 _COLOURS = (1, 2, 3, 4, 5, 6)
 """The six colours' ANSI slots, red to cyan; each bright one is eight later."""
@@ -83,38 +88,6 @@ _DARKER_BRIGHT = {
 
 _ROOT = Path(__file__).resolve().parents[1]
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
-# The names herdr resolves into its theme, which `colors` may override (its
-# src/settings.rs, `resolve`), less the ANSI slots the file sets.
-_PANEL_NAMES = {
-    "background",
-    "terminal_foreground",
-    "foreground",
-    "surface",
-    "canvas",
-    "chrome",
-    "popover",
-    "raised",
-    "hover",
-    "selected",
-    "border",
-    "input",
-    "muted",
-    "dim",
-    "accent",
-    "accent_foreground",
-    "solid",
-    "solid_foreground",
-    "ring",
-    "selection",
-    "cursor",
-    "working",
-    "blocked",
-    "done",
-    "idle",
-    "unknown",
-}
-
-
 # The panel colours the theme leaves to herdr's own derivation from the
 # terminal background (issue 12, D1), with the two it derives that go with
 # them: ``ring``, a neutral edge, and ``solid_foreground``, the text on a solid
@@ -133,9 +106,29 @@ _LEFT_TO_HERDR = {
     "solid_foreground",
 }
 
-
-_PANEL_TEXT = ("foreground", "muted", "dim")
-"""The panels' text keys the theme sets; herdr draws them on its derived surfaces."""
+# What herdr v0.1.16 derives from these backgrounds, worked out by hand from its
+# src/settings.rs: in dark mode canvas, chrome and solid_foreground are the
+# background 16%, 32% and 28% toward black, popover and raised 6% and 9% toward
+# white; in light mode canvas and chrome are 20% and 60% toward #e8e8e2, raised
+# 3.5% toward black, popover the background and solid_foreground white.
+_DERIVED_BY_HAND = {
+    "#fffaf3": {
+        "surface": "#fffaf3",
+        "canvas": "#faf6f0",
+        "chrome": "#f1efe9",
+        "popover": "#fffaf3",
+        "raised": "#f6f1ea",
+        "solid_foreground": "#ffffff",
+    },
+    "#191724": {
+        "surface": "#191724",
+        "canvas": "#15131e",
+        "chrome": "#111018",
+        "popover": "#272531",
+        "raised": "#2e2c38",
+        "solid_foreground": "#12111a",
+    },
+}
 
 
 def _theme(mode: palette.Mode) -> dict[str, Any]:
@@ -150,7 +143,7 @@ def test_the_theme_is_in_herdrs_format(mode: palette.Mode) -> None:
         assert _HEX.match(theme[key]), f"{key}: {theme[key]}"
     assert len(theme["ansi"]) == 16
     assert all(_HEX.match(colour) for colour in theme["ansi"]), theme["ansi"]
-    assert set(theme["colors"]) <= _PANEL_NAMES, set(theme["colors"]) - _PANEL_NAMES
+    assert set(theme["colors"]) <= set(herdr.NAMES), set(theme["colors"]) - set(herdr.NAMES)
     assert all(_HEX.match(colour) for colour in theme["colors"].values()), theme["colors"]
 
 
@@ -159,6 +152,23 @@ def test_the_port_of_herdrs_mix_rounds_as_herdr_does() -> None:
     assert herdr.mix("#191724", "#000000", 0.32) == "#111018"
     # Half rounds away from zero, as Rust's f32::round does.
     assert herdr.mix("#010101", "#000000", 0.5) == "#010101"
+    # In 32-bit floats 5 * 0.94 + 30 * 0.06 is 6.5 and rounds up; in 64-bit
+    # floats it is 6.4999... and would round down.
+    assert herdr.mix("#050505", "#1e1e1e", 0.06) == "#070707"
+
+
+@pytest.mark.parametrize(("background", "derived"), _DERIVED_BY_HAND.items())
+def test_the_port_of_herdrs_resolve_derives_the_surfaces_worked_out_by_hand(
+    background: str, derived: dict[str, str]
+) -> None:
+    theme = {"background": background, "foreground": "#808080", "selection": "#808080", "ansi": ["#808080"] * 16}
+    resolved = herdr.resolve(theme)
+    assert {key: resolved[key] for key in derived} == derived
+
+
+def test_the_port_of_herdrs_resolve_returns_every_name_in_order() -> None:
+    theme = {"background": "#191724", "foreground": "#808080", "selection": "#808080", "ansi": ["#808080"] * 16}
+    assert list(herdr.resolve(theme)) == list(herdr.NAMES)
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
@@ -210,8 +220,8 @@ def test_every_bright_colour_is_lighter_than_its_normal_one(mode: palette.Mode) 
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_the_terminal_text_reaches_4_5_on_its_background_and_selection(mode: palette.Mode) -> None:
     theme = _theme(mode)
-    assert Color(theme["foreground"]).contrast(theme["background"]) >= 4.5
-    assert Color(theme["foreground"]).contrast(theme["selection"]) >= 4.5
+    assert Color(theme["foreground"]).contrast(theme["background"]) >= contrast.NEEDS["text"]
+    assert Color(theme["foreground"]).contrast(theme["selection"]) >= contrast.NEEDS["text"]
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
@@ -222,21 +232,34 @@ def test_the_chrome_and_the_canvas_herdr_derives_stand_apart_from_the_terminal(m
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_panel_text_reaches_4_5_on_every_surface_herdr_derives(mode: palette.Mode) -> None:
-    resolved = herdr.resolve(_theme(mode))
-    short = {
-        f"{key} {resolved[key]} on {surface} {resolved[surface]}": round(ratio, 2)
-        for key in _PANEL_TEXT
-        for surface in herdr.SURFACES
-        if (ratio := Color(resolved[key]).contrast(resolved[surface])) < 4.5
-    }
-    assert not short, f"{mode}: below 4.5:1: {short}"
+def test_the_panel_text_takes_coppers_text_roles(mode: palette.Mode) -> None:
+    c = tokens.colours(mode)
+    colors = _theme(mode)["colors"]
+    dim = c["text-subtle"] if mode == "light" else c["neutral-10"]
+    assert [colors[key] for key in ("foreground", "solid", "muted", "dim")] == [
+        c["text"],
+        c["text"],
+        c["text-muted"],
+        dim,
+    ]
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_text_on_a_solid_button_reaches_4_5(mode: palette.Mode) -> None:
+def test_the_panel_text_and_a_solid_buttons_reach_the_text_need_on_what_herdr_derives(mode: palette.Mode) -> None:
     resolved = herdr.resolve(_theme(mode))
-    assert Color(resolved["solid_foreground"]).contrast(resolved["solid"]) >= 4.5
+    checks = herdr.checks(resolved)
+    assert {(check.foreground, check.background) for check in checks} == {
+        *((text, surface) for text in ("foreground", "muted", "dim") for surface in herdr.SURFACES),
+        ("solid_foreground", "solid"),
+    }
+    short = {
+        f"{check.foreground} {resolved[check.foreground]} on {check.background} {resolved[check.background]}": round(
+            check.ratio, 2
+        )
+        for check in checks
+        if not check.passes
+    }
+    assert not short, f"{mode}: below the text need: {short}"
 
 
 @pytest.mark.parametrize("mode", palette.MODES)

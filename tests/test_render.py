@@ -138,7 +138,7 @@ def test_a_template_raising_anything_names_template_and_mode() -> None:
 def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _env_with("broken.json.j2", '{"background": {{ c["bg"] }}}')
     monkeypatch.setattr(render, "environment", lambda: env)
-    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.json"), "broken.json.j2"),))
+    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.json"), "broken.json.j2", None),))
     with pytest.raises(render.RenderError, match=r"^x-light\.json \(broken\.json\.j2\) is no valid JSON"):
         render.outputs()
 
@@ -146,7 +146,7 @@ def test_a_json_output_that_is_no_valid_json_is_refused(monkeypatch: pytest.Monk
 def test_an_xml_output_that_is_not_well_formed_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _env_with("broken.xml.j2", "<resources><color>{{ c['bg'] }}</resources>")
     monkeypatch.setattr(render, "environment", lambda: env)
-    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.xml"), "broken.xml.j2"),))
+    monkeypatch.setattr(render, "OUTPUTS", ((render.each_mode("x-{mode}.xml"), "broken.xml.j2", None),))
     with pytest.raises(render.RenderError, match=r"^x-light\.xml \(broken\.xml\.j2\) is no well-formed XML"):
         render.outputs()
 
@@ -220,8 +220,8 @@ def _colours_by_mode() -> dict[palette.Mode, Mapping[str, str]]:
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_the_preview_shows_colour_blindness_views_of_the_hues_and_states(mode: palette.Mode) -> None:
     loaded = tokens.load(mode)
-    herdr = json.loads(render.render(render.environment(), render.HERDR_TEMPLATE, loaded))
-    names = preview.mode_data(loaded, herdr, _colours_by_mode())["cvd"]["names"]
+    theme = json.loads(render.render(render.environment(), render.HERDR_TEMPLATE, loaded, herdr.template_context))
+    names = preview.mode_data(loaded, theme, _colours_by_mode())["cvd"]["names"]
     hues = ["blue", "green", "teal", "yellow", "orange", "red", "violet"]
     assert names == [*hues, "success", "warning", "error", "info"]
 
@@ -278,4 +278,7 @@ def test_the_preview_draws_the_herdr_panels_as_herdr_derives_them(tmp_path: Path
             f"{mode}: the terminal is not on the chrome"
         )
         cards = re.findall(r'<div class="card" style="background: (#[0-9a-f]{6});[^"]*">\s*<div[^>]*>(\w+) ', section)
-        assert cards == [(resolved[surface], surface) for surface in herdr.SURFACES], mode
+        assert cards == [(resolved[ground], ground) for ground in (*herdr.SURFACES, "solid")], mode
+        needs = re.findall(r"\(needs ([0-9.]+)\)", section)
+        assert needs == [str(contrast.NEEDS["text"])] * len(herdr.PAIRS), mode
+        assert "FAILS" not in section, mode

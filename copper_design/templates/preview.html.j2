@@ -99,7 +99,7 @@
   <h2>herdr theme</h2>
   {%- set h = m.herdr %}
   {%- set hp = m.herdr_panels %}
-  <p class="note" style="color: {{ c['text-muted'] }}">The panels as herdr {{ hp.version }} resolves the theme: the terminal on the chrome, then each opaque surface herdr derives from the background with the panel text on it (text needs 4.5), then every colour with what sets it.</p>
+  <p class="note" style="color: {{ c['text-muted'] }}">The panels as herdr {{ hp.version }} resolves the theme: the terminal on the chrome, then each opaque surface herdr derives from the background with the panel text on it and a solid button with its text, each with its contrast and need, then every colour with what sets it.</p>
   <div style="background: {{ hp.resolved.chrome }}; padding: 10px; border-radius: 12px">
   <div class="term" style="background: {{ h.background }}; color: {{ h.foreground }}; border: 1px solid {{ hp.resolved.border }}">
     <div>$ ls --color <span style="background: {{ h.selection }}">selected</span><span style="background: {{ h.cursor }}">&nbsp;</span></div>
@@ -119,11 +119,11 @@
   </div>
   </div>
   <div style="margin-top: 10px">
-    {%- for surface in hp.surfaces %}
-    <div class="card" style="background: {{ surface.hex }}; outline: 1px solid {{ c['border'] }}">
-      <div class="mono" style="color: {{ hp.resolved.foreground }}">{{ surface.name }} {{ surface.hex }}</div>
-      {%- for key, hex, ratio in surface.texts %}
-      <div style="color: {{ hex }}">{{ key }} {{ '%.2f' % ratio }}{{ ' below 4.5' if ratio < 4.5 }}</div>
+    {%- for ground in hp.grounds %}
+    <div class="card" style="background: {{ ground.hex }}; outline: 1px solid {{ c['border'] }}">
+      <div class="mono" style="color: {{ ground.texts[0][1] }}">{{ ground.name }} {{ ground.hex }}</div>
+      {%- for check, hex in ground.texts %}
+      <div class="{{ 'fail' if not check.passes }}" style="color: {{ hex }}">{{ check.foreground }} {{ '%.2f' % check.ratio }} (needs {{ check.need }}){{ ' FAILS' if not check.passes }}</div>
       {%- endfor %}
     </div>
     {%- endfor %}
