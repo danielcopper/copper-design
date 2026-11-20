@@ -3,7 +3,8 @@ colour scheme, per mode.
 
 The page is for judging the look before a release; it is written to a path the
 caller names and not committed. The contrast checks are copper_design.contrast's
-and copper_design.material's.
+and copper_design.material's; the herdr panels are drawn as herdr resolves the
+theme (copper_design.herdr).
 """
 
 import json
@@ -12,7 +13,7 @@ from typing import Any
 
 from coloraide import Color
 
-from copper_design import contrast, material, palette, render, tokens
+from copper_design import contrast, herdr, material, palette, render, tokens
 
 CVD = ("protan", "deutan", "tritan")
 
@@ -50,8 +51,32 @@ def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[s
     return {"version": material.MATERIAL3, "roles": roles, "pairs": pairs}
 
 
+def herdr_data(theme: Mapping[str, Any]) -> dict[str, Any]:
+    """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and per ground in
+    copper_design.herdr's PAIRS the checks of the text on it."""
+    resolved = herdr.resolve(theme)
+    set_by_theme = herdr.set_by_theme(theme)
+    grounds = list(dict.fromkeys(ground for _, ground in herdr.PAIRS))
+    checks = herdr.checks(resolved)
+    return {
+        "version": herdr.HERDR,
+        "resolved": resolved,
+        "colours": [
+            (key, hex_colour, "theme" if key in set_by_theme else "herdr") for key, hex_colour in resolved.items()
+        ],
+        "grounds": [
+            {
+                "name": ground,
+                "hex": resolved[ground],
+                "texts": [(check, resolved[check.foreground]) for check in checks if check.background == ground],
+            }
+            for ground in grounds
+        ],
+    }
+
+
 def mode_data(
-    mode_tokens: tokens.ModeTokens, herdr: dict[str, Any], colours_by_mode: material.ColoursByMode
+    mode_tokens: tokens.ModeTokens, herdr_theme: dict[str, Any], colours_by_mode: material.ColoursByMode
 ) -> dict[str, Any]:
     """Everything the page shows for one mode; its Material 3 scheme takes from both modes' colours."""
     colours = mode_tokens.colours
@@ -81,8 +106,11 @@ def mode_data(
             "rows": [("normal", [colours[name] for name in named])]
             + [(kind, [simulate(colours[name], kind) for name in named]) for kind in CVD],
         },
-        "herdr": herdr,
-        "ansi": [(hex_colour, contrast.ratio(hex_colour, herdr["background"])) for hex_colour in herdr["ansi"]],
+        "herdr": herdr_theme,
+        "herdr_panels": herdr_data(herdr_theme),
+        "ansi": [
+            (hex_colour, contrast.ratio(hex_colour, herdr_theme["background"])) for hex_colour in herdr_theme["ansi"]
+        ],
         "material": material_data(mode_tokens.mode, colours_by_mode),
     }
 
@@ -94,6 +122,6 @@ def page() -> str:
     colours: material.ColoursByMode = {mode: loaded.colours for mode, loaded in by_mode.items()}
     modes = []
     for mode_tokens in by_mode.values():
-        herdr = json.loads(render.render(env, render.HERDR_TEMPLATE, mode_tokens))
-        modes.append(mode_data(mode_tokens, herdr, colours))
+        herdr_theme = json.loads(render.render_output(env, render.HERDR_TEMPLATE, mode_tokens))
+        modes.append(mode_data(mode_tokens, herdr_theme, colours))
     return render.render_template(env, "preview.html.j2", "both modes", modes=modes)

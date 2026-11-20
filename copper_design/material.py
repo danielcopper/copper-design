@@ -118,7 +118,7 @@ def _row(light: str, dark: str) -> Row:
 #   secondary), so it takes the first step from 9 that reaches 4.5:1 both ways,
 #   on surface Highest included. That is step 9 for blue in light mode and for
 #   every hue in dark mode. In light mode neutral, violet and red 9 and 10 fall
-#   short as text (on Highest, step 4, neutral 10 reaches 3.97:1, violet 10
+#   short as text (on Highest, step 4, neutral 10 reaches 4.15:1, violet 10
 #   4.16:1, red 10 4.19:1), so secondary, tertiary and error take their text
 #   step 11. In dark mode neutral 9 reaches only 3.90:1 on Highest, step 5, so
 #   secondary takes 10.

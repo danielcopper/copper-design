@@ -9,7 +9,7 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, TemplateSyntaxError, select_autoescape
 
-from copper_design import material, palette, tokens
+from copper_design import herdr, material, palette, tokens
 
 type PerMode = Mapping[palette.Mode, str]
 """A path below the output root for each mode."""
@@ -23,16 +23,20 @@ def each_mode(pattern: str) -> PerMode:
 ANDROID_VALUES: dict[palette.Mode, str] = {"light": "values", "dark": "values-night"}
 """The Android resource directory of each mode: the system takes values-night in dark mode."""
 
+type ModeExtraContext = Callable[[palette.Mode], dict[str, Any]]
+"""What a template rendered per mode gets beside the mode's context, from the mode."""
+
 HERDR_TEMPLATE = "herdr.json.j2"
-OUTPUTS: tuple[tuple[PerMode, str], ...] = (
-    (each_mode("ports/herdr/copper-{mode}.json"), HERDR_TEMPLATE),
+OUTPUTS: tuple[tuple[PerMode, str, ModeExtraContext | None], ...] = (
+    (each_mode("ports/herdr/copper-{mode}.json"), HERDR_TEMPLATE, herdr.template_context),
     (
         {mode: f"ports/android/res/{values}/copper_colors.xml" for mode, values in ANDROID_VALUES.items()},
         "copper_colors.xml.j2",
+        None,
     ),
-    (each_mode("docs/swatch-{mode}.svg"), "swatch.svg.j2"),
+    (each_mode("docs/swatch-{mode}.svg"), "swatch.svg.j2", None),
 )
-"""What `render` writes once per mode: each mode's path below the output root, and the template."""
+"""What `render` writes once per mode: each mode's path below the output root, the template and what else it gets."""
 
 type ExtraContext = Callable[[material.ColoursByMode], dict[str, Any]]
 """What a template rendered for both modes gets beside the modes' contexts, from both modes' colours."""
@@ -149,9 +153,18 @@ def render_template(env: Environment, template: str, where: str, **values: Any) 
         raise RenderError(f"{template}{_where_in_template(template, error)} ({where}): {message}") from error
 
 
-def render(env: Environment, template: str, mode_tokens: tokens.ModeTokens) -> str:
-    """One template rendered for one mode."""
-    return render_template(env, template, mode_tokens.mode, **context(mode_tokens))
+def render(
+    env: Environment, template: str, mode_tokens: tokens.ModeTokens, extra: ModeExtraContext | None = None
+) -> str:
+    """One template rendered for one mode, with what else it gets from the mode."""
+    values = context(mode_tokens) | (extra(mode_tokens.mode) if extra else {})
+    return render_template(env, template, mode_tokens.mode, **values)
+
+
+def render_output(env: Environment, template: str, mode_tokens: tokens.ModeTokens) -> str:
+    """A template of OUTPUTS rendered for one mode, with what else OUTPUTS gives it."""
+    (extra,) = {extra for _, name, extra in OUTPUTS if name == template}
+    return render(env, template, mode_tokens, extra)
 
 
 def _check_format(path: str, template: str, text: str) -> None:
@@ -177,9 +190,9 @@ def outputs() -> dict[str, str]:
     rendered: dict[str, str] = {}
     by_mode: dict[palette.Mode, tokens.ModeTokens] = {mode: tokens.load(mode) for mode in palette.MODES}
     for mode, mode_tokens in by_mode.items():
-        for paths, template in OUTPUTS:
+        for paths, template, extra in OUTPUTS:
             path = paths[mode]
-            text = render(env, template, mode_tokens)
+            text = render(env, template, mode_tokens, extra)
             _check_format(path, template, text)
             rendered[path] = text
     colours: material.ColoursByMode = {mode: mode_tokens.colours for mode, mode_tokens in by_mode.items()}
