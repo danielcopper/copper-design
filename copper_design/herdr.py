@@ -1,16 +1,15 @@
-"""The herdr port's mapping, and the colours herdr resolves from a theme file.
+"""The herdr port's ``colors`` mapping, and the colours herdr resolves from a theme file.
 
-``COLORS`` is the mapping as data: the keys the theme's ``colors`` sets, each
-with its copper source per mode; the template, the tests and the preview read
-it alike. tests/test_herdr.py's docstring says why the table reads as it does.
+``COLORS`` is the ``colors`` mapping as data: the keys the theme's ``colors``
+sets, each with its copper source per mode; the template renders it.
+tests/test_herdr.py's docstring says why the table reads as it does.
 
-herdr derives its panel colours from the theme's terminal background and lets
-``colors`` override any of them by name. The port leaves the panel surfaces to
-that derivation (issue 12, D1), so the tests and the preview compute them here:
-``is_light``, ``mix`` and ``resolve`` port herdr v0.1.16's functions of those
-names in ``src/settings.rs``, and ``checks`` measures the panel text on what
-``resolve`` returns. A herdr release that changes them changes this file with
-the pin.
+herdr derives the colours ``colors`` leaves out from the theme's terminal
+background, so the tests and the preview compute them here: ``is_light``,
+``mix`` and ``resolve`` port herdr v0.1.16's functions of those names in
+``src/settings.rs``, and ``checks`` measures the text herdr draws on what
+``resolve`` returns: the panel text on each surface, and a solid button's text
+on its fill. A herdr release that changes them changes this file with the pin.
 """
 
 import math

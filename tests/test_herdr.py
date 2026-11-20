@@ -5,9 +5,9 @@ herdr 0.1.16 reads ``themes/<name>.json``: ``background``, ``foreground``,
 and an optional ``colors`` that overrides its panel colours by name with
 ``#rrggbb`` or ``#rrggbbaa``. It takes a theme as light by the background's
 luminance (copper_design.herdr's ``is_light``). This docstring is the one
-description of the theme file's format here, and of the rules the port follows;
-the template points to it, and copper_design.herdr ports how herdr resolves a
-theme.
+description of the theme file's format here, and of why the port's colours
+are as they are; the template points to it, and copper_design.herdr holds the
+``colors`` mapping and ports how herdr resolves a theme.
 
 The port: the terminal is a surface (a pane on the canvas), so its background
 is the ``surface`` role. ANSI order: black, red, green, yellow, blue, magenta
@@ -245,13 +245,31 @@ def test_the_panel_text_takes_coppers_text_roles(mode: palette.Mode) -> None:
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
+def test_the_accent_and_the_agent_states_take_coppers_roles(mode: palette.Mode) -> None:
+    c = tokens.colours(mode)
+    colors = _theme(mode)["colors"]
+    assert {key: colors[key] for key in ("accent", "accent_foreground", "working", "blocked", "done")} == {
+        "accent": c["accent"],
+        "accent_foreground": c["on-accent"],
+        "working": c["warning"],
+        "blocked": c["error"],
+        "done": c["success"],
+    }
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
 def test_the_panel_text_and_a_solid_buttons_reach_the_text_need_on_what_herdr_derives(mode: palette.Mode) -> None:
     resolved = herdr.resolve(_theme(mode))
     checks = herdr.checks(resolved)
     assert {(check.foreground, check.background) for check in checks} == {
-        *((text, surface) for text in ("foreground", "muted", "dim") for surface in herdr.SURFACES),
+        *(
+            (text, surface)
+            for text in ("foreground", "muted", "dim")
+            for surface in ("surface", "canvas", "chrome", "popover", "raised")
+        ),
         ("solid_foreground", "solid"),
     }
+    assert {check.need for check in checks} == {contrast.NEEDS["text"]}
     short = {
         f"{check.foreground} {resolved[check.foreground]} on {check.background} {resolved[check.background]}": round(
             check.ratio, 2

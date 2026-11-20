@@ -52,8 +52,9 @@ def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[s
 
 
 def herdr_data(theme: Mapping[str, Any]) -> dict[str, Any]:
-    """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and per ground herdr
-    derives the checks of the text on it (copper_design.herdr's)."""
+    """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and per ground in
+    copper_design.herdr's PAIRS (the surfaces herdr derives, then a solid button's fill) the checks of the text on
+    it."""
     resolved = herdr.resolve(theme)
     set_by_theme = herdr.set_by_theme(theme)
     grounds = list(dict.fromkeys(ground for _, ground in herdr.PAIRS))
@@ -122,6 +123,6 @@ def page() -> str:
     colours: material.ColoursByMode = {mode: loaded.colours for mode, loaded in by_mode.items()}
     modes = []
     for mode_tokens in by_mode.values():
-        herdr_theme = json.loads(render.render(env, render.HERDR_TEMPLATE, mode_tokens, herdr.template_context))
+        herdr_theme = json.loads(render.render_output(env, render.HERDR_TEMPLATE, mode_tokens))
         modes.append(mode_data(mode_tokens, herdr_theme, colours))
     return render.render_template(env, "preview.html.j2", "both modes", modes=modes)

@@ -23,11 +23,11 @@ def each_mode(pattern: str) -> PerMode:
 ANDROID_VALUES: dict[palette.Mode, str] = {"light": "values", "dark": "values-night"}
 """The Android resource directory of each mode: the system takes values-night in dark mode."""
 
-type ModeContext = Callable[[palette.Mode], dict[str, Any]]
+type ModeExtraContext = Callable[[palette.Mode], dict[str, Any]]
 """What a template rendered per mode gets beside the mode's context, from the mode."""
 
 HERDR_TEMPLATE = "herdr.json.j2"
-OUTPUTS: tuple[tuple[PerMode, str, ModeContext | None], ...] = (
+OUTPUTS: tuple[tuple[PerMode, str, ModeExtraContext | None], ...] = (
     (each_mode("ports/herdr/copper-{mode}.json"), HERDR_TEMPLATE, herdr.template_context),
     (
         {mode: f"ports/android/res/{values}/copper_colors.xml" for mode, values in ANDROID_VALUES.items()},
@@ -153,10 +153,18 @@ def render_template(env: Environment, template: str, where: str, **values: Any) 
         raise RenderError(f"{template}{_where_in_template(template, error)} ({where}): {message}") from error
 
 
-def render(env: Environment, template: str, mode_tokens: tokens.ModeTokens, extra: ModeContext | None = None) -> str:
+def render(
+    env: Environment, template: str, mode_tokens: tokens.ModeTokens, extra: ModeExtraContext | None = None
+) -> str:
     """One template rendered for one mode, with what else it gets from the mode."""
     values = context(mode_tokens) | (extra(mode_tokens.mode) if extra else {})
     return render_template(env, template, mode_tokens.mode, **values)
+
+
+def render_output(env: Environment, template: str, mode_tokens: tokens.ModeTokens) -> str:
+    """A template of OUTPUTS rendered for one mode, with what else OUTPUTS gives it."""
+    (extra,) = {extra for _, name, extra in OUTPUTS if name == template}
+    return render(env, template, mode_tokens, extra)
 
 
 def _check_format(path: str, template: str, text: str) -> None:
