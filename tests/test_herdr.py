@@ -41,6 +41,18 @@ carries meaning (copper_design.herdr's ``COLORS``):
   stays herdr's (white in light mode, the background darkened in dark mode) and
   reaches it on ``text``.
 
+``colors`` also carries colours for herdr's mods (issue 15, D4), under keys
+prefixed ``copper-`` so that none collides with a name a later herdr resolves
+(copper_design.herdr's ``for_mods``): each base colour's main value
+(``copper-blue``) and its steps 3 and 4, the tinted backgrounds, and 6 and 7,
+the borders (``copper-blue-3``), the neutral's included, so that a mod draws a
+grey badge or chip as it draws a coloured one; then the roles that reach herdr
+no other way, ``bg``, ``bg-alt``, ``surface-raised``, ``border``,
+``border-strong`` and ``info`` (``copper-bg``). herdr 0.1.16 hands every key of
+``colors`` to its mods, a name it resolves or not, though its documentation
+names only its own; the port of ``resolve`` does the same, so a herdr release
+that changes it shows when the pin moves.
+
 The ANSI colours:
 
 - Every ANSI colour reaches 3:1 on the terminal background, except the grey on
@@ -143,8 +155,51 @@ def test_the_theme_is_in_herdrs_format(mode: palette.Mode) -> None:
         assert _HEX.match(theme[key]), f"{key}: {theme[key]}"
     assert len(theme["ansi"]) == 16
     assert all(_HEX.match(colour) for colour in theme["ansi"]), theme["ansi"]
-    assert set(theme["colors"]) <= set(herdr.NAMES), set(theme["colors"]) - set(herdr.NAMES)
+    unknown = {key for key in theme["colors"] if key not in herdr.NAMES and not key.startswith("copper-")}
+    assert not unknown, f"{mode}: neither a name herdr resolves nor a colour for mods: {unknown}"
     assert all(_HEX.match(colour) for colour in theme["colors"].values()), theme["colors"]
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_theme_carries_coppers_colours_for_mods(mode: palette.Mode) -> None:
+    loaded = tokens.load(mode)
+    c = loaded.colours
+    expected = {
+        **{
+            f"copper-{name}{suffix}": c[f"{name}{suffix}"]
+            for name in loaded.bases
+            for suffix in ("", "-3", "-4", "-6", "-7")
+        },
+        **{f"copper-{role}": c[role] for role in ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")},
+    }
+    colors = _theme(mode)["colors"]
+    assert {key: value for key, value in colors.items() if key.startswith("copper-")} == expected
+
+
+def test_the_port_of_herdrs_resolve_passes_coppers_colours_for_mods_through() -> None:
+    # herdr 0.1.16 inserts every key of the file's ``colors`` into the theme it
+    # hands to mods (``for (k, v) in overrides { t.insert(k.clone(), v.clone()) }``),
+    # a name it resolves or not.
+    colors = {"copper-orange": "#ff8800", "copper-blue-3": "#112233", "accent": "#445566"}
+    theme = {
+        "background": "#191724",
+        "foreground": "#808080",
+        "selection": "#808080",
+        "ansi": ["#808080"] * 16,
+        "colors": colors,
+    }
+    resolved = herdr.resolve(theme)
+    assert list(resolved) == [*herdr.NAMES, "copper-orange", "copper-blue-3"]
+    assert {key: resolved[key] for key in colors} == colors
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_herdr_hands_mods_every_colour_the_theme_carries_for_them(mode: palette.Mode) -> None:
+    colors = _theme(mode)["colors"]
+    resolved = herdr.resolve(_theme(mode))
+    for_mods = {key: value for key, value in colors.items() if key.startswith("copper-")}
+    assert for_mods, mode
+    assert {key: resolved[key] for key in for_mods} == for_mods
 
 
 def test_the_port_of_herdrs_mix_rounds_as_herdr_does() -> None:

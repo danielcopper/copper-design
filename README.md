@@ -32,7 +32,8 @@ For colours:
 - **Ports**: a Python generator with Jinja2 templates renders the tokens into generic ports, one per target, committed
   under `ports/<target>/`:
   - `ports/herdr/`: a [herdr](https://github.com/herdrdev/herdr-app) terminal theme pair, `copper-light.json` and
-    `copper-dark.json`.
+    `copper-dark.json`. Beside herdr's own colour names they carry copper's named colours for herdr's mods, under keys
+    prefixed `copper-` (`copper-blue-3`, `copper-border`).
   - `ports/android/`: laid out as an Android source set. `kotlin/dev/cupr/design/CopperColors.kt` holds every named
     colour and role as Compose colours (`CopperColors.light.blue9`, `CopperColors.dark.bg`), and `CopperColorScheme.kt`
     the Material 3 colour schemes built from them (`CopperColorScheme.light`, `.dark`). `res/values/copper_colors.xml`

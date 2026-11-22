@@ -1,7 +1,9 @@
 """The herdr port's ``colors`` mapping, and the colours herdr resolves from a theme file.
 
-``COLORS`` is the ``colors`` mapping as data: the keys the theme's ``colors``
-sets, each with its copper source per mode; the template renders it.
+``COLORS`` is the ``colors`` mapping as data: the names herdr resolves that
+the theme's ``colors`` sets, each with its copper source per mode, and
+``for_mods`` the keys it carries for herdr's mods beside them; the template
+renders both.
 tests/test_herdr.py's docstring says why the table reads as it does.
 
 herdr derives the colours the theme file leaves out from its terminal
@@ -9,15 +11,16 @@ background, so the tests and the preview compute them here: ``is_light``,
 ``mix`` and ``resolve`` port herdr v0.1.16's functions of those names in
 ``src/settings.rs``, and ``checks`` measures each pair of ``PAIRS`` on what
 ``resolve`` returns. A herdr release that changes them changes this file with
-the pin.
+the pin. ``resolve`` also hands on the keys of ``colors`` that are none of
+herdr's names, as herdr does for its mods.
 """
 
 import math
 import struct
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
-from copper_design import contrast
+from copper_design import contrast, tokens
 from copper_design.palette import Mode
 
 HERDR = "0.1.16"
@@ -41,7 +44,32 @@ def _colors(dim: str) -> tuple[tuple[str, str], ...]:
 
 
 COLORS: dict[Mode, tuple[tuple[str, str], ...]] = {"light": _colors("text-subtle"), "dark": _colors("neutral-10")}
-"""Per mode, the keys the theme's ``colors`` sets, in the file's order, each with its copper source."""
+"""Per mode, the names herdr resolves that the theme's ``colors`` sets, in the file's order, each with its copper
+source."""
+
+FOR_MODS = "copper-"
+"""The prefix of the keys the theme's ``colors`` carries for herdr's mods, beside the names herdr resolves; herdr
+hands every key of ``colors`` to its mods, and none of herdr's names starts with it."""
+
+MOD_STEPS = (3, 4, 6, 7)
+"""The steps of each base colour carried for mods: the tinted backgrounds (3, 4) and the borders (6, 7)."""
+
+MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
+"""The roles carried for mods: those that reach herdr no other way."""
+
+
+def for_mods(bases: Iterable[str]) -> tuple[tuple[str, str], ...]:
+    """The keys the theme's ``colors`` carries for mods, each with its copper source: per base colour its main value
+    and MOD_STEPS, then MOD_ROLES."""
+    return (
+        *(
+            (f"{FOR_MODS}{name}", source)
+            for base in bases
+            for name, source in ((base, base), *((f"{base}-{step}", f"{base}-{step}") for step in MOD_STEPS))
+        ),
+        *((f"{FOR_MODS}{role}", role) for role in MOD_ROLES),
+    )
+
 
 NAMES = (
     "background",
@@ -93,8 +121,9 @@ PAIRS = (*((text, surface) for surface in SURFACES for text in PANEL_TEXT), ("so
 
 
 def template_context(mode: Mode) -> dict[str, Any]:
-    """What the herdr template gets beside the mode's context: the ``colors`` mapping of that mode."""
-    return {"herdr_colors": COLORS[mode]}
+    """What the herdr template gets beside the mode's context: the ``colors`` mapping of that mode, COLORS and then
+    the colours for mods."""
+    return {"herdr_colors": (*COLORS[mode], *for_mods(tokens.load(mode).bases))}
 
 
 def set_by_theme(theme: Mapping[str, Any]) -> set[str]:
@@ -141,7 +170,8 @@ def mix(a: str, b: str, t: float) -> str:
 
 
 def resolve(theme: Mapping[str, Any]) -> dict[str, str]:
-    """Every colour herdr resolves from a theme file, NAMES in order, then the file's ``colors`` applied over them."""
+    """Every colour herdr resolves from a theme file, NAMES in order, then the file's ``colors`` applied over them:
+    a name of NAMES replaced, any other key added after them in the file's order."""
     bg = theme["background"]
     ansi = theme["ansi"]
     light = is_light(bg)
