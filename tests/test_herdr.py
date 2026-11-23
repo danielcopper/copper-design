@@ -9,17 +9,36 @@ description of the theme file's format here, and of why the port's colours
 are as they are; the template points to it, and copper_design.herdr holds the
 ``colors`` mapping and ports how herdr resolves a theme.
 
-The port: the terminal is a surface (a pane on the canvas), so its background
-is the ``surface`` role. ANSI order: black, red, green, yellow, blue, magenta
-(violet), cyan (teal), white, then the bright eight.
+The port: the terminal is a pane on the canvas. ANSI order: black, red, green,
+yellow, blue, magenta (violet), cyan (teal), white, then the bright eight.
 
-herdr derives its panel colours from the terminal background
-(copper_design.herdr ports how): the chrome (sidebars, bars) and the canvas
-(behind cards) step away from it, darker in dark mode and toward a warm grey in
-light mode, popovers and raised surfaces lighter in dark mode, and hover, the
-selected row (``selected``), borders and inputs are translucent. ``colors``
-leaves those to herdr, as herdr's presets do (issue 12, D1), and sets only what
-carries meaning (copper_design.herdr's ``COLORS``):
+The panel levels (issue 15, D1, D2 and D5) are neutral steps the port picks
+per mode (copper_design.herdr's ``TERMINAL`` and ``COLORS``), not copper's
+roles, and follow herdr's own build, where the sidebar is part of the frame: in
+dark mode the sidebar (``chrome``) and ``canvas`` (behind cards) share step 1,
+the terminal and ``surface`` (a board's columns) take step 3, cards (``raised``)
+and popovers step 5; in light mode the sidebar and ``canvas`` share step 3, the
+terminal and ``surface`` step 1, cards step 3 (they sit on step-1 columns, never
+on ``canvas``), and popovers are white, step 1, set apart from the terminal by
+copper's border. What herdr derives from the terminal background instead leaves
+them 1.04 to 1.07:1 apart, and the window reads as one surface; here every two
+levels herdr draws beside or on each other stand at least 1.12:1 apart by
+luminance, what two neutral steps reach at the dark end, but the pairs meant to
+read as one surface (the sidebar and ``canvas``, and in light mode the terminal
+and a popover).
+
+The selected row (``selected``) is an opaque blue tint (D3), as most interfaces
+and Material's ``primaryContainer`` mark a selection: blue step 4 in dark mode,
+step 3 in light mode. From cards, and in light mode from the sidebar, it differs
+mainly in hue (1.02 to 1.05:1 by luminance), so those pairs are measured by
+their distance in OKLab instead, at least 3 (times 100), about what one neutral
+step apart reaches at these levels. ``hover`` stays herdr's translucent layer,
+transient and quiet. ``border`` and ``input`` (the stronger edge of an input)
+are ``border`` and ``border-strong``, which keep copper's hue where herdr's are
+white or black at low alpha.
+
+Beside the levels, ``colors`` sets what carries meaning (copper_design.herdr's
+``COLORS``):
 
 - the accent and the text on it: ``accent`` and ``accent_foreground`` are
   ``accent`` and ``on-accent``. ``ring`` stays herdr's: a neutral grey, not the
@@ -32,13 +51,13 @@ carries meaning (copper_design.herdr's ``COLORS``):
 - the panels' text (issue 12, D2 and D3), so it matches the terminal's:
   ``foreground`` and ``solid`` (a solid button's fill) are ``text``, ``muted``
   is ``text-muted``, ``dim`` is ``text-subtle`` in light mode. In dark mode
-  ``dim`` is neutral step 10, a step above ``text-subtle``: herdr lifts its dark
-  popover and raised surfaces toward white, and ``text-subtle`` falls short of
-  the text need (copper_design.contrast) on them. Each reaches it on every
-  opaque surface herdr derives (copper_design.herdr's ``checks``); light
-  neutral step 10 is set so that ``text-subtle`` reaches it on herdr's light
-  chrome (parameters.toml). The text on a solid button, ``solid_foreground``,
-  stays herdr's (white in light mode, the background darkened in dark mode) and
+  ``dim`` is neutral step 10, a step above ``text-subtle``, which falls short
+  of the text need (copper_design.contrast) on the dark popovers and cards
+  (step 5). Each reaches it on every panel level, the selected row included
+  (copper_design.herdr's ``checks``); light neutral step 10 is set so that
+  ``text-subtle`` reaches it on the light step-3 levels (issue 15, D5,
+  parameters.toml). The text on a solid button, ``solid_foreground``, stays
+  herdr's (white in light mode, the background darkened in dark mode) and
   reaches it on ``text``.
 
 ``colors`` also carries colours for herdr's mods (issue 15, D4), under keys
@@ -100,23 +119,71 @@ _DARKER_BRIGHT = {
 
 _ROOT = Path(__file__).resolve().parents[1]
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
-# The panel colours the theme leaves to herdr's own derivation from the
-# terminal background (issue 12, D1), with the two it derives that go with
-# them: ``ring``, a neutral edge, and ``solid_foreground``, the text on a solid
-# button.
-_LEFT_TO_HERDR = {
-    "surface",
-    "canvas",
-    "chrome",
-    "popover",
-    "raised",
-    "hover",
-    "selected",
-    "border",
-    "input",
-    "ring",
-    "solid_foreground",
+# What the theme leaves to herdr: ``hover``, a translucent layer, transient and
+# quiet (issue 15, D3), ``ring``, a neutral edge, and ``solid_foreground``, the
+# text on a solid button.
+_LEFT_TO_HERDR = {"hover", "ring", "solid_foreground"}
+
+# The copper colour of each panel level herdr reads, and of the terminal (the
+# file's ``background``): neutral steps (issue 15, D2 and D5), the selected row
+# a blue tint (D3).
+_LEVELS = {
+    "dark": {
+        "background": "neutral-3",
+        "surface": "neutral-3",
+        "chrome": "neutral-1",
+        "canvas": "neutral-1",
+        "raised": "neutral-5",
+        "popover": "neutral-5",
+        "selected": "blue-4",
+    },
+    "light": {
+        "background": "neutral-1",
+        "surface": "neutral-1",
+        "chrome": "neutral-3",
+        "canvas": "neutral-3",
+        "raised": "neutral-3",
+        "popover": "neutral-1",
+        "selected": "blue-3",
+    },
 }
+
+# The panel levels herdr draws beside or on each other, the terminal being
+# ``background``. Each pair stands at least 1.12:1 apart by luminance (issue 15,
+# D1), but the pairs meant to read as one surface and the pairs that differ
+# mainly in hue, each with why.
+_TOUCHING = (
+    ("chrome", "canvas"),
+    ("canvas", "background"),
+    ("canvas", "surface"),
+    ("surface", "raised"),
+    ("background", "selected"),
+    ("chrome", "selected"),
+    ("raised", "selected"),
+    ("background", "popover"),
+    ("canvas", "popover"),
+)
+_SIDEBAR = "the sidebar is part of the frame, as in herdr's own build (issue 15, D2)"
+_ONE_SURFACE = {
+    ("dark", "chrome", "canvas"): _SIDEBAR,
+    ("light", "chrome", "canvas"): _SIDEBAR,
+    ("light", "background", "popover"): "the light popover is white, set apart by copper's border (issue 15, D5)",
+}
+_TINT = "the selected row is a blue tint, apart from a neutral level mainly by hue (issue 15, D3)"
+_BY_HUE = {
+    ("dark", "raised", "selected"): _TINT,
+    ("light", "raised", "selected"): _TINT,
+    ("light", "chrome", "selected"): _TINT,
+}
+_HUE_DISTANCE = 3.0
+"""The OKLab distance (times 100) a pair of _BY_HUE keeps: about what one neutral step apart reaches at the levels used
+(2.3 to 3.2), so the tint stands apart from a card at least as far as the next neutral step would."""
+
+
+def _oklab_distance(a: str, b: str) -> float:
+    """The Euclidean distance of two colours in OKLab, times 100."""
+    return Color(a).delta_e(b, method="ok") * 100
+
 
 # What herdr v0.1.16 derives from these backgrounds, worked out by hand from its
 # src/settings.rs: in dark mode canvas, chrome and solid_foreground are the
@@ -227,8 +294,46 @@ def test_the_port_of_herdrs_resolve_returns_every_name_in_order() -> None:
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_theme_sets_no_panel_surface_colour(mode: palette.Mode) -> None:
+def test_the_theme_leaves_hover_ring_and_the_text_on_a_solid_button_to_herdr(mode: palette.Mode) -> None:
     assert not set(_theme(mode)["colors"]) & _LEFT_TO_HERDR, set(_theme(mode)["colors"]) & _LEFT_TO_HERDR
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_panel_levels_take_their_copper_colours(mode: palette.Mode) -> None:
+    c = tokens.colours(mode)
+    resolved = herdr.resolve(_theme(mode))
+    assert {key: resolved[key] for key in _LEVELS[mode]} == {key: c[name] for key, name in _LEVELS[mode].items()}
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_borders_take_coppers_border_roles(mode: palette.Mode) -> None:
+    c = tokens.colours(mode)
+    colors = _theme(mode)["colors"]
+    assert (colors["border"], colors["input"]) == (c["border"], c["border-strong"])
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_the_panel_levels_that_touch_stand_apart(mode: palette.Mode) -> None:
+    resolved = herdr.resolve(_theme(mode))
+    named = {(a, b) for named_mode, a, b in (*_ONE_SURFACE, *_BY_HUE) if named_mode == mode}
+    assert named <= set(_TOUCHING), named - set(_TOUCHING)
+    by_luminance = {(a, b): contrast.ratio(resolved[a], resolved[b]) for a, b in _TOUCHING}
+    close = {
+        f"{a} {resolved[a]} | {b} {resolved[b]}": round(ratio, 3)
+        for (a, b), ratio in by_luminance.items()
+        if ratio < 1.12 and (mode, a, b) not in _ONE_SURFACE and (mode, a, b) not in _BY_HUE
+    }
+    assert not close, f"{mode}: below 1.12:1: {close}"
+    apart = [(a, b) for (one_mode, a, b) in _ONE_SURFACE if one_mode == mode and resolved[a] != resolved[b]]
+    assert not apart, f"{mode}: meant to read as one surface, but not equal: {apart}"
+    near = {
+        f"{a} {resolved[a]} | {b} {resolved[b]}": round(_oklab_distance(resolved[a], resolved[b]), 2)
+        for (hue_mode, a, b) in _BY_HUE
+        if hue_mode == mode and _oklab_distance(resolved[a], resolved[b]) < _HUE_DISTANCE
+    }
+    assert not near, f"{mode}: below an OKLab distance of {_HUE_DISTANCE}: {near}"
+    stale = [(a, b) for (hue_mode, a, b) in _BY_HUE if hue_mode == mode and by_luminance[a, b] >= 1.12]
+    assert not stale, f"{mode}: these reach 1.12:1 by luminance now; measure them so: {stale}"
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
@@ -280,13 +385,6 @@ def test_the_terminal_text_reaches_4_5_on_its_background_and_selection(mode: pal
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_chrome_and_the_canvas_herdr_derives_stand_apart_from_the_terminal(mode: palette.Mode) -> None:
-    resolved = herdr.resolve(_theme(mode))
-    chrome, canvas, terminal = (Color(resolved[key]).luminance() for key in ("chrome", "canvas", "background"))
-    assert chrome < canvas < terminal, {key: resolved[key] for key in ("chrome", "canvas", "background")}
-
-
-@pytest.mark.parametrize("mode", palette.MODES)
 def test_the_panel_text_takes_coppers_text_roles(mode: palette.Mode) -> None:
     c = tokens.colours(mode)
     colors = _theme(mode)["colors"]
@@ -313,14 +411,14 @@ def test_the_accent_and_the_agent_states_take_coppers_roles(mode: palette.Mode) 
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_panel_text_and_a_solid_buttons_reach_the_text_need_on_what_herdr_derives(mode: palette.Mode) -> None:
+def test_the_panel_text_and_a_solid_buttons_reach_the_text_need_on_every_level(mode: palette.Mode) -> None:
     resolved = herdr.resolve(_theme(mode))
     checks = herdr.checks(resolved)
     assert {(check.foreground, check.background) for check in checks} == {
         *(
             (text, surface)
             for text in ("foreground", "muted", "dim")
-            for surface in ("surface", "canvas", "chrome", "popover", "raised")
+            for surface in ("surface", "canvas", "chrome", "popover", "raised", "selected")
         ),
         ("solid_foreground", "solid"),
     }

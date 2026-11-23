@@ -1,9 +1,10 @@
 {#-
   A herdr terminal theme. tests/test_herdr.py's docstring holds the rules this
-  file follows (what herdr reads, which steps the terminal and ANSI colours take
-  and why, which panel colours it sets and which it leaves to herdr), and the
-  tests hold the rendered file to them. The colors mapping, herdr_colors, is
-  copper_design.herdr's COLORS.
+  file follows (what herdr reads, which steps the terminal, the panel levels and
+  the ANSI colours take and why, which colours it leaves to herdr, and which it
+  carries for herdr's mods), and the tests hold the rendered file to them. The
+  terminal's step, herdr_terminal, is copper_design.herdr's TERMINAL; the colors
+  mapping, herdr_colors, is its COLORS and then its colours for mods.
 -#}
 {%- if mode == "light" -%}
 {%- set ansi = [
@@ -17,7 +18,7 @@
 ] -%}
 {%- endif -%}
 {
-  "background": {{ c["surface"] | tojson }},
+  "background": {{ c[herdr_terminal] | tojson }},
   "foreground": {{ c["text"] | tojson }},
   "selection": {{ c["selection"] | tojson }},
   "cursor": {{ c["text"] | tojson }},

@@ -1,5 +1,5 @@
 {
-  "background": "#191724",
+  "background": "#1f1d2e",
   "foreground": "#e0def4",
   "selection": "#2d2a42",
   "cursor": "#e0def4",
@@ -22,6 +22,14 @@
     "#e0def4"
   ],
   "colors": {
+    "surface": "#1f1d2e",
+    "canvas": "#14121d",
+    "chrome": "#14121d",
+    "popover": "#2d2a42",
+    "raised": "#2d2a42",
+    "selected": "#1e3243",
+    "border": "#423e59",
+    "input": "#8885a3",
     "foreground": "#e0def4",
     "muted": "#aaa7c5",
     "dim": "#9794b2",

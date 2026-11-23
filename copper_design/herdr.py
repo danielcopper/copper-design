@@ -6,8 +6,12 @@ the theme's ``colors`` sets, each with its copper source per mode, and
 renders both.
 tests/test_herdr.py's docstring says why the table reads as it does.
 
-herdr derives the colours the theme file leaves out from its terminal
-background, so the tests and the preview compute them here: ``is_light``,
+``TERMINAL`` is the step of the terminal's background per mode, the theme
+file's ``background``.
+
+herdr derives the colours the theme file leaves out (``hover``, ``ring``,
+``solid_foreground``) from its terminal background, so the tests and the
+preview compute them here: ``is_light``,
 ``mix`` and ``resolve`` port herdr v0.1.16's functions of those names in
 ``src/settings.rs``, and ``checks`` measures each pair of ``PAIRS`` on what
 ``resolve`` returns. A herdr release that changes them changes this file with
@@ -27,8 +31,21 @@ HERDR = "0.1.16"
 """The herdr version whose ``resolve`` this file ports."""
 
 
-def _colors(dim: str) -> tuple[tuple[str, str], ...]:
+TERMINAL: dict[Mode, str] = {"light": "neutral-1", "dark": "neutral-3"}
+"""Per mode, the step of the terminal's background, the theme file's ``background``."""
+
+
+def _colors(levels: tuple[int, int, int, int, int], selected: str, dim: str) -> tuple[tuple[str, str], ...]:
+    surface, canvas, chrome, popover, raised = (f"neutral-{step}" for step in levels)
     return (
+        ("surface", surface),
+        ("canvas", canvas),
+        ("chrome", chrome),
+        ("popover", popover),
+        ("raised", raised),
+        ("selected", selected),
+        ("border", "border"),
+        ("input", "border-strong"),
         ("foreground", "text"),
         ("muted", "text-muted"),
         ("dim", dim),
@@ -43,9 +60,13 @@ def _colors(dim: str) -> tuple[tuple[str, str], ...]:
     )
 
 
-COLORS: dict[Mode, tuple[tuple[str, str], ...]] = {"light": _colors("text-subtle"), "dark": _colors("neutral-10")}
+COLORS: dict[Mode, tuple[tuple[str, str], ...]] = {
+    "light": _colors((1, 3, 3, 1, 3), "blue-3", "text-subtle"),
+    "dark": _colors((3, 1, 1, 5, 5), "blue-4", "neutral-10"),
+}
 """Per mode, the names herdr resolves that the theme's ``colors`` sets, in the file's order, each with its copper
-source."""
+source: the panel levels (``surface``, ``canvas``, ``chrome``, ``popover``, ``raised``) as neutral steps and the
+selected row as a blue tint, then the borders, the text, the accent and the agent states."""
 
 FOR_MODS = "copper-"
 """The prefix of the keys the theme's ``colors`` carries for herdr's mods, beside the names herdr resolves; herdr
@@ -110,20 +131,20 @@ FROM_FILE = {
 }
 """The names herdr takes from the theme file outside ``colors``, each with its key in the file."""
 
-SURFACES = ("surface", "canvas", "chrome", "popover", "raised")
-"""The opaque panel surfaces herdr derives."""
+SURFACES = ("surface", "canvas", "chrome", "popover", "raised", "selected")
+"""The opaque panel levels, the selected row's included; the terminal's background is ``surface``'s step."""
 
 PANEL_TEXT = ("foreground", "muted", "dim")
-"""The panels' text, drawn on every surface herdr derives."""
+"""The panels' text, drawn on every panel level."""
 
 PAIRS = (*((text, surface) for surface in SURFACES for text in PANEL_TEXT), ("solid_foreground", "solid"))
 """The text measured against what it sits on, by surface: the panel text on each surface, then a solid button's."""
 
 
 def template_context(mode: Mode) -> dict[str, Any]:
-    """What the herdr template gets beside the mode's context: the ``colors`` mapping of that mode, COLORS and then
-    the colours for mods."""
-    return {"herdr_colors": (*COLORS[mode], *for_mods(tokens.load(mode).bases))}
+    """What the herdr template gets beside the mode's context: the terminal's step and the ``colors`` mapping of that
+    mode, COLORS and then the colours for mods."""
+    return {"herdr_terminal": TERMINAL[mode], "herdr_colors": (*COLORS[mode], *for_mods(tokens.load(mode).bases))}
 
 
 def set_by_theme(theme: Mapping[str, Any]) -> set[str]:

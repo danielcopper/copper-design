@@ -266,7 +266,7 @@ def test_the_preview_shows_the_material3_scheme_in_light_and_dark(tmp_path: Path
     assert sources["dark"]["surfaceBright"] == f"neutral-6 {dark['neutral-6']}"
 
 
-def test_the_preview_draws_the_herdr_panels_as_herdr_derives_them(tmp_path: Path) -> None:
+def test_the_preview_draws_the_herdr_panels_as_herdr_resolves_them(tmp_path: Path) -> None:
     page = tmp_path / "copper.html"
     main(["preview", str(page)])
     sections = page.read_text(encoding="utf-8").split("copper, dark mode")
@@ -278,7 +278,7 @@ def test_the_preview_draws_the_herdr_panels_as_herdr_derives_them(tmp_path: Path
             f"{mode}: the terminal is not on the chrome"
         )
         cards = re.findall(r'<div class="card" style="background: (#[0-9a-f]{6});[^"]*">\s*<div[^>]*>(\w+) ', section)
-        grounds = ("surface", "canvas", "chrome", "popover", "raised", "solid")
+        grounds = ("surface", "canvas", "chrome", "popover", "raised", "selected", "solid")
         assert cards == [(resolved[ground], ground) for ground in grounds], mode
         needs = re.findall(r"\(needs ([0-9.]+)\)", section)
         assert needs == [str(contrast.NEEDS["text"])] * len(herdr.PAIRS), mode

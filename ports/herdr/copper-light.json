@@ -22,6 +22,14 @@
     "#918c9e"
   ],
   "colors": {
+    "surface": "#fffaf3",
+    "canvas": "#f2e9e1",
+    "chrome": "#f2e9e1",
+    "popover": "#fffaf3",
+    "raised": "#f2e9e1",
+    "selected": "#deefff",
+    "border": "#c6bec5",
+    "input": "#6b677e",
     "foreground": "#464261",
     "muted": "#635f7c",
     "dim": "#6b677e",
