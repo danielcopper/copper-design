@@ -58,8 +58,9 @@ Beside the levels, ``colors`` sets what carries meaning (copper_design.herdr's
   ``foreground`` and ``solid`` (a solid button's fill) are ``text``, ``muted``
   is ``text-muted``, ``dim`` is ``text-subtle`` in light mode. In dark mode
   ``dim`` is neutral step 10, a step above ``text-subtle``, which falls short
-  of the text need (copper_design.contrast) on dark ``raised`` (step 5). Each
-  reaches it on every panel level, the selected row included
+  of the text need (copper_design.contrast) on dark ``raised`` (step 5) and
+  the selected row (blue step 4). Each reaches it on every panel level, the
+  selected row included
   (copper_design.herdr's ``checks``); light neutral step 10 is set so that
   ``text-subtle`` reaches it on the light step-3 levels (issue 15, D5,
   parameters.toml). The text on a solid button, ``solid_foreground``, stays
@@ -71,10 +72,10 @@ prefixed ``copper-`` so that none collides with a name a later herdr resolves
 (copper_design.herdr's ``for_mods``): each base colour's main value
 (``copper-blue``) and its steps 3 and 4, the tinted backgrounds, and 6 and 7,
 the borders (``copper-blue-3``), the neutral's included, so that a mod draws a
-grey badge or chip as it draws a coloured one; then the roles ``bg``,
-``bg-alt``, ``surface-raised``, ``border``, ``border-strong`` and ``info``
-(``copper-bg``), for mods to name by role. herdr 0.1.17 hands every key of ``colors`` to its mods, a name
-it resolves or not, though its documentation names only its own. The port of
+grey badge or chip as it draws a coloured one; then the roles of
+copper_design.herdr's ``MOD_ROLES`` (``copper-bg``), for mods to name by
+role. herdr 0.1.17 hands every key of ``colors`` to its mods, a name it
+resolves or not, though its documentation names only its own. The port of
 ``resolve`` does the same and the tests hold the theme to it; a herdr release
 that changes this shows only once its ``resolve`` is ported with the pin.
 

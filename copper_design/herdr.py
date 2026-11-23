@@ -85,7 +85,7 @@ MOD_STEPS = (3, 4, 6, 7)
 """The steps of each base colour carried for mods: the tinted backgrounds (3, 4) and the borders (6, 7)."""
 
 MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
-"""The roles carried for mods, for them to name by role: bg, bg-alt, surface-raised, border, border-strong and info."""
+"""The roles carried for mods, for them to name by role."""
 
 
 def for_mods(bases: Iterable[str]) -> tuple[tuple[str, str], ...]:
