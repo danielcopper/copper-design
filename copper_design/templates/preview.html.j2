@@ -11,6 +11,7 @@
   section { flex: 1 1 900px; min-width: 0; padding: 24px 28px 40px; box-sizing: border-box; overflow-x: auto; }
   h1 { margin: 0 0 4px; font-size: 22px; }
   h2 { margin: 28px 0 10px; font-size: 16px; }
+  h3 { margin: 18px 0 8px; font-size: 14px; }
   p.note { margin: 0 0 8px; }
   table { border-collapse: collapse; }
   td, th { padding: 3px 6px; text-align: left; vertical-align: middle; }
@@ -118,8 +119,9 @@
     </div>
   </div>
   </div>
+  {%- macro ground_cards(grounds) %}
   <div style="margin-top: 10px">
-    {%- for ground in hp.grounds %}
+    {%- for ground in grounds %}
     <div class="card" style="background: {{ ground.hex }}; outline: 1px solid {{ c['border'] }}">
       <div class="mono" style="color: {{ ground.texts[0][1] }}">{{ ground.name }} {{ ground.hex }}</div>
       {%- for check, hex in ground.texts %}
@@ -128,11 +130,16 @@
     </div>
     {%- endfor %}
   </div>
+  {%- endmacro %}
+  {{- ground_cards(hp.grounds) }}
   <table>
     {%- for key, hex, source in hp.colours %}
     <tr><td class="mono">{{ key }}</td><td><span class="chip" style="background: {{ hex }}; height: 18px; outline: 1px solid {{ c['border'] }}"></span></td><td class="mono">{{ hex }}</td><td class="mono">{{ source }}</td></tr>
     {%- endfor %}
   </table>
+  <h3>herdr colours for mods</h3>
+  <p class="note" style="color: {{ c['text-muted'] }}">Each base colour's text colour for mods on its tinted backgrounds (steps 3 and 4), then all of them on the terminal's background, each with its contrast and need.</p>
+  {{- ground_cards(hp.mod_grounds) }}
 
   {%- set md = m.material %}
   <h2>Material 3 colour scheme</h2>
