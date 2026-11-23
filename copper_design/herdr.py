@@ -2,7 +2,8 @@
 
 ``COLORS`` is the ``colors`` mapping as data: the names herdr resolves that
 the theme's ``colors`` sets, each with its copper source per mode, and
-``for_mods`` the keys it carries for herdr's mods beside them; the template
+``for_mods`` the keys it carries for herdr's mods beside them, each base
+colour's text colour picked by ``text_step``; the template
 renders both, and the terminal's background from ``terminal``.
 tests/test_herdr.py's docstring says why the table reads as it does.
 
@@ -16,7 +17,7 @@ that changes them changes this file with the pin.
 
 import math
 import struct
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 from copper_design import contrast, tokens
@@ -84,18 +85,49 @@ herdr's names starts with it."""
 MOD_STEPS = (3, 4, 6, 7)
 """The steps of each base colour carried for mods: the tinted backgrounds (3, 4) and the borders (6, 7)."""
 
+MOD_TEXT = "text"
+"""The suffix of each base colour's text colour for mods (``copper-blue-text``)."""
+
+MOD_TEXT_STEPS = (11, 12)
+"""The steps a base colour's text colour for mods takes from, in order (issue 18, D1): copper's text step (11), then
+the stronger one (12) where step 11 falls short of the text need on the grounds of ``MOD_TEXT_ON``."""
+
+MOD_TEXT_ON = (3, 4)
+"""The steps of its own base colour a text colour for mods is measured on, the tinted backgrounds, beside the
+terminal's background."""
+
+
+def text_step(mode_tokens: tokens.ModeTokens, base: str) -> int:
+    """The first of MOD_TEXT_STEPS of ``base`` that reaches the text need on its MOD_TEXT_ON steps and on the
+    terminal's background; a ValueError if none does."""
+    c = mode_tokens.colours
+    grounds = (*(f"{base}-{step}" for step in MOD_TEXT_ON), terminal(mode_tokens.mode))
+    for step in MOD_TEXT_STEPS:
+        text = f"{base}-{step}"
+        if all(contrast.ratio(c[text], c[ground]) >= contrast.NEEDS["text"] for ground in grounds):
+            return step
+    raise ValueError(
+        f"{mode_tokens.mode}: no step of {base} in {MOD_TEXT_STEPS} reaches {contrast.NEEDS['text']}:1 "
+        f"on {', '.join(grounds)}"
+    )
+
+
 MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
 """The roles carried for mods, for them to name by role."""
 
 
-def for_mods(bases: Iterable[str]) -> tuple[tuple[str, str], ...]:
-    """The keys the theme's ``colors`` carries for mods, each with its copper source: per base colour its main value
-    and MOD_STEPS, then MOD_ROLES."""
+def for_mods(mode_tokens: tokens.ModeTokens) -> tuple[tuple[str, str], ...]:
+    """The keys the theme's ``colors`` carries for mods, each with its copper source: per base colour its main value,
+    MOD_STEPS and its text colour (``text_step``), then MOD_ROLES."""
     return (
         *(
             (f"{MOD_PREFIX}{name}", source)
-            for base in bases
-            for name, source in ((base, base), *((f"{base}-{step}", f"{base}-{step}") for step in MOD_STEPS))
+            for base in mode_tokens.bases
+            for name, source in (
+                (base, base),
+                *((f"{base}-{step}", f"{base}-{step}") for step in MOD_STEPS),
+                (f"{base}-{MOD_TEXT}", f"{base}-{text_step(mode_tokens, base)}"),
+            )
         ),
         *((f"{MOD_PREFIX}{role}", role) for role in MOD_ROLES),
     )
@@ -160,7 +192,7 @@ def template_context(mode_tokens: tokens.ModeTokens) -> dict[str, Any]:
     """What the herdr template gets beside the mode's context: the terminal's colour and the ``colors`` mapping of
     that mode, COLORS and then the colours for mods."""
     mode = mode_tokens.mode
-    return {"herdr_terminal": terminal(mode), "herdr_colors": (*COLORS[mode], *for_mods(mode_tokens.bases))}
+    return {"herdr_terminal": terminal(mode), "herdr_colors": (*COLORS[mode], *for_mods(mode_tokens))}
 
 
 def set_by_theme(theme: Mapping[str, Any]) -> set[str]:
