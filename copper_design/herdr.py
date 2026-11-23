@@ -8,10 +8,10 @@ tests/test_herdr.py's docstring says why the table reads as it does.
 
 herdr derives the colours the theme file leaves out (``hover``, ``ring``,
 ``solid_foreground``) from its terminal background, so the tests and the
-preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr v0.1.17's functions of those names in
-``src/settings.rs``, and ``checks`` measures each pair of ``PAIRS`` on what
-``resolve`` returns. A herdr release that changes them changes this file with
-the pin.
+preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr
+v0.1.17's functions of those names in ``src/settings.rs``, and ``checks``
+measures each pair of ``PAIRS`` on what ``resolve`` returns. A herdr release
+that changes them changes this file with the pin.
 """
 
 import math
@@ -85,7 +85,7 @@ MOD_STEPS = (3, 4, 6, 7)
 """The steps of each base colour carried for mods: the tinted backgrounds (3, 4) and the borders (6, 7)."""
 
 MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
-"""The roles carried for mods: the background and border roles and info, for mods to name by role."""
+"""The roles carried for mods, for them to name by role: bg, bg-alt, surface-raised, border, border-strong and info."""
 
 
 def for_mods(bases: Iterable[str]) -> tuple[tuple[str, str], ...]:
@@ -141,7 +141,7 @@ FROM_FILE = {
 """The names herdr takes from the theme file outside ``colors``, each with its key in the file."""
 
 LEVELS = ("surface", "canvas", "chrome", "popover", "raised", "selected")
-"""The opaque panel levels, the selected row's included; the terminal's background is ``surface``'s colour."""
+"""The opaque panel levels, the selected row's included."""
 
 PANEL_TEXT = ("foreground", "muted", "dim")
 """The panels' text, drawn on every panel level."""
@@ -151,8 +151,8 @@ PAIRS = (*((text, level) for level in LEVELS for text in PANEL_TEXT), ("solid_fo
 
 
 def terminal(mode: Mode) -> str:
-    """The copper source of the terminal's background, the theme file's ``background``: ``surface``'s, since the
-    terminal is a surface."""
+    """The copper source of the terminal's background, the theme file's ``background``: ``surface``'s, since herdr
+    sets ``surface`` to the terminal's background (its src/settings.rs, ``resolve``)."""
     return dict(COLORS[mode])["surface"]
 
 
