@@ -287,6 +287,12 @@ def test_each_text_colour_for_mods_reaches_the_text_need_on_its_tints_and_the_te
     assert not short, f"{mode}: below the text need: {short}"
 
 
+def test_the_text_colour_for_mods_takes_the_step_issue_18_names() -> None:
+    # Issue 18, D1, written out here so the pick is not graded by itself.
+    assert herdr.MOD_TEXT_STEP == 11
+    assert herdr.MOD_TEXT_STEPS == {"light": {"yellow": 12, "orange": 12}, "dark": {}}
+
+
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_a_text_colour_for_mods_takes_another_step_only_where_step_11_falls_short(mode: palette.Mode) -> None:
     loaded = tokens.load(mode)
