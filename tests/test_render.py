@@ -271,7 +271,7 @@ def test_the_preview_draws_the_herdr_panels_as_herdr_resolves_them(tmp_path: Pat
     main(["preview", str(page)])
     sections = page.read_text(encoding="utf-8").split("copper, dark mode")
     for mode, section in zip(palette.MODES, sections, strict=True):
-        section = section.split("<h2>herdr theme</h2>")[1].split("<h2>")[0]
+        section = section.split("<h2>herdr theme</h2>")[1].split("<h2>")[0].split("<h3>")[0]
         theme = json.loads(render.outputs()[f"ports/herdr/copper-{mode}.json"])
         resolved = herdr.resolve(theme)
         assert f"background: {resolved['chrome']}; padding: 10px" in section, (
@@ -282,4 +282,30 @@ def test_the_preview_draws_the_herdr_panels_as_herdr_resolves_them(tmp_path: Pat
         assert cards == [(resolved[ground], ground) for ground in grounds], mode
         needs = re.findall(r"\(needs ([0-9.]+)\)", section)
         assert needs == [str(contrast.NEEDS["text"])] * len(herdr.PAIRS), mode
+        assert "FAILS" not in section, mode
+
+
+def test_the_preview_shows_the_herdr_text_colours_for_mods_on_their_grounds(tmp_path: Path) -> None:
+    page = tmp_path / "copper.html"
+    main(["preview", str(page)])
+    sections = page.read_text(encoding="utf-8").split("copper, dark mode")
+    for mode, section in zip(palette.MODES, sections, strict=True):
+        section = section.split("<h2>herdr theme</h2>")[1].split("<h2>")[0].split("<h3>herdr colours for mods</h3>")[1]
+        resolved = herdr.resolve(json.loads(render.outputs()[f"ports/herdr/copper-{mode}.json"]))
+        bases = tokens.load(mode).bases
+        pairs = herdr.mod_pairs(bases)
+        grounds = list(dict.fromkeys(ground for _, ground in pairs))
+        assert len(grounds) == 2 * len(bases) + 1, mode
+        cards = re.findall(
+            r'<div class="card" style="background: (#[0-9a-f]{6});[^"]*">\s*<div[^>]*>([\w-]+) ', section
+        )
+        assert cards == [(resolved[ground], ground) for ground in grounds], mode
+        # Card by card, each text on its ground in the pairs' order.
+        texts = re.findall(r'style="color: (#[0-9a-f]{6})">([\w-]+) ([0-9.]+) \(needs ([0-9.]+)\)', section)
+        assert texts == [
+            (resolved[text], text, f"{contrast.ratio(resolved[text], resolved[on]):.2f}", str(contrast.NEEDS["text"]))
+            for ground in grounds
+            for text, on in pairs
+            if on == ground
+        ], mode
         assert "FAILS" not in section, mode

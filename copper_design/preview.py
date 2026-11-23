@@ -51,27 +51,32 @@ def material_data(mode: palette.Mode, colours: material.ColoursByMode) -> dict[s
     return {"version": material.MATERIAL3, "roles": roles, "pairs": pairs}
 
 
-def herdr_data(theme: Mapping[str, Any]) -> dict[str, Any]:
+def _grounds(resolved: Mapping[str, str], pairs: tuple[tuple[str, str], ...]) -> list[dict[str, Any]]:
+    """Per ground of the pairs, in their order, the checks of the text on it."""
+    checks = herdr.checks(resolved, pairs)
+    return [
+        {
+            "name": ground,
+            "hex": resolved[ground],
+            "texts": [(check, resolved[check.foreground]) for check in checks if check.background == ground],
+        }
+        for ground in dict.fromkeys(ground for _, ground in pairs)
+    ]
+
+
+def herdr_data(theme: Mapping[str, Any], bases: tuple[str, ...]) -> dict[str, Any]:
     """The colours herdr resolves from a theme, each with whether the theme or herdr sets it, and per ground in
-    copper_design.herdr's PAIRS the checks of the text on it."""
+    copper_design.herdr's PAIRS, then in its ``mod_pairs`` of the base colours, the checks of the text on it."""
     resolved = herdr.resolve(theme)
     set_by_theme = herdr.set_by_theme(theme)
-    grounds = list(dict.fromkeys(ground for _, ground in herdr.PAIRS))
-    checks = herdr.checks(resolved)
     return {
         "version": herdr.HERDR,
         "resolved": resolved,
         "colours": [
             (key, hex_colour, "theme" if key in set_by_theme else "herdr") for key, hex_colour in resolved.items()
         ],
-        "grounds": [
-            {
-                "name": ground,
-                "hex": resolved[ground],
-                "texts": [(check, resolved[check.foreground]) for check in checks if check.background == ground],
-            }
-            for ground in grounds
-        ],
+        "grounds": _grounds(resolved, herdr.PAIRS),
+        "mod_grounds": _grounds(resolved, herdr.mod_pairs(bases)),
     }
 
 
@@ -107,7 +112,7 @@ def mode_data(
             + [(kind, [simulate(colours[name], kind) for name in named]) for kind in CVD],
         },
         "herdr": herdr_theme,
-        "herdr_panels": herdr_data(herdr_theme),
+        "herdr_panels": herdr_data(herdr_theme, mode_tokens.bases),
         "ansi": [
             (hex_colour, contrast.ratio(hex_colour, herdr_theme["background"])) for hex_colour in herdr_theme["ansi"]
         ],

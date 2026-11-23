@@ -3,21 +3,22 @@
 ``COLORS`` is the ``colors`` mapping as data: the names herdr resolves that
 the theme's ``colors`` sets, each with its copper source per mode, and
 ``for_mods`` the keys it carries for herdr's mods beside them, each base
-colour's text colour picked by ``text_step``; the template
-renders both, and the terminal's background from ``terminal``.
+colour's text colour at ``MOD_TEXT_STEP`` or the step ``MOD_TEXT_STEPS``
+names; the template renders both, and the terminal's background from
+``terminal``.
 tests/test_herdr.py's docstring says why the table reads as it does.
 
 herdr derives the colours the theme file leaves out (``hover``, ``ring``,
 ``solid_foreground``) from its terminal background, so the tests and the
 preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr
 v0.1.17's functions of those names in ``src/settings.rs``, and ``checks``
-measures each pair of ``PAIRS`` on what ``resolve`` returns. A herdr release
-that changes them changes this file with the pin.
+measures each pair of ``PAIRS``, or of ``mod_pairs``, on what ``resolve``
+returns. A herdr release that changes them changes this file with the pin.
 """
 
 import math
 import struct
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from copper_design import contrast, tokens
@@ -88,28 +89,20 @@ MOD_STEPS = (3, 4, 6, 7)
 MOD_TEXT = "text"
 """The suffix of each base colour's text colour for mods (``copper-blue-text``)."""
 
-MOD_TEXT_STEPS = (11, 12)
-"""The steps a base colour's text colour for mods takes from, in order (issue 18, D1): copper's text step (11), then
-the stronger one (12) where step 11 falls short of the text need on the grounds of ``MOD_TEXT_ON``."""
+MOD_TEXT_STEP = 11
+"""The step a base colour's text colour for mods takes (issue 18, D1): low-contrast text (GLOSSARY, Step), for a
+label or chip coloured by hue, since step 11 carries more of the hue than high-contrast text (12). This is herdr's own
+pick: the Android port puts step 12 on its containers, as Material's on-container text (copper_design.material)."""
 
-MOD_TEXT_ON = (3, 4)
-"""The steps of its own base colour a text colour for mods is measured on, the tinted backgrounds, beside the
-terminal's background."""
+MOD_TEXT_STEPS: dict[Mode, dict[str, int]] = {"light": {"yellow": 12, "orange": 12}, "dark": {}}
+"""Per mode, the base colours whose text colour for mods takes another step than MOD_TEXT_STEP, with that step:
+high-contrast text (12) where step 11 falls short of the text need on the colour's steps 3 and 4 or on the
+terminal's background (``mod_pairs``); tests/test_herdr.py holds each entry to that."""
 
 
-def text_step(mode_tokens: tokens.ModeTokens, base: str) -> int:
-    """The first of MOD_TEXT_STEPS of ``base`` that reaches the text need on its MOD_TEXT_ON steps and on the
-    terminal's background; a ValueError if none does."""
-    c = mode_tokens.colours
-    grounds = (*(f"{base}-{step}" for step in MOD_TEXT_ON), terminal(mode_tokens.mode))
-    for step in MOD_TEXT_STEPS:
-        text = f"{base}-{step}"
-        if all(contrast.ratio(c[text], c[ground]) >= contrast.NEEDS["text"] for ground in grounds):
-            return step
-    raise ValueError(
-        f"{mode_tokens.mode}: no step of {base} in {MOD_TEXT_STEPS} reaches {contrast.NEEDS['text']}:1 "
-        f"on {', '.join(grounds)}"
-    )
+def mod_text_step(mode: Mode, base: str) -> int:
+    """The step of ``base`` its text colour for mods takes in ``mode``: MOD_TEXT_STEPS's, else MOD_TEXT_STEP."""
+    return MOD_TEXT_STEPS[mode].get(base, MOD_TEXT_STEP)
 
 
 MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
@@ -118,7 +111,7 @@ MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info"
 
 def for_mods(mode_tokens: tokens.ModeTokens) -> tuple[tuple[str, str], ...]:
     """The keys the theme's ``colors`` carries for mods, each with its copper source: per base colour its main value,
-    MOD_STEPS and its text colour (``text_step``), then MOD_ROLES."""
+    MOD_STEPS and its text colour (``mod_text_step``), then MOD_ROLES."""
     return (
         *(
             (f"{MOD_PREFIX}{name}", source)
@@ -126,7 +119,7 @@ def for_mods(mode_tokens: tokens.ModeTokens) -> tuple[tuple[str, str], ...]:
             for name, source in (
                 (base, base),
                 *((f"{base}-{step}", f"{base}-{step}") for step in MOD_STEPS),
-                (f"{base}-{MOD_TEXT}", f"{base}-{text_step(mode_tokens, base)}"),
+                (f"{base}-{MOD_TEXT}", f"{base}-{mod_text_step(mode_tokens.mode, base)}"),
             )
         ),
         *((f"{MOD_PREFIX}{role}", role) for role in MOD_ROLES),
@@ -182,6 +175,15 @@ PAIRS = (*((text, level) for level in LEVELS for text in PANEL_TEXT), ("solid_fo
 """The text measured against what it sits on, by level: the panel text on each level, then a solid button's."""
 
 
+def mod_pairs(bases: Sequence[str]) -> tuple[tuple[str, str], ...]:
+    """The text colours for mods measured against what they sit on: each on its base colour's steps 3 and 4 (the
+    tinted backgrounds), then each on the terminal's background."""
+    return (
+        *((f"{MOD_PREFIX}{base}-{MOD_TEXT}", f"{MOD_PREFIX}{base}-{step}") for base in bases for step in (3, 4)),
+        *((f"{MOD_PREFIX}{base}-{MOD_TEXT}", "background") for base in bases),
+    )
+
+
 def terminal(mode: Mode) -> str:
     """The copper source of the terminal's background, the theme file's ``background``: ``surface``'s, since herdr
     sets ``surface`` to the terminal's background (its src/settings.rs, ``resolve``)."""
@@ -200,11 +202,11 @@ def set_by_theme(theme: Mapping[str, Any]) -> set[str]:
     return {*FROM_FILE, *theme.get("colors", {})}
 
 
-def checks(resolved: Mapping[str, str]) -> list[contrast.Check]:
-    """Each pair's contrast in a resolved theme, in PAIRS's order, with the text need."""
+def checks(resolved: Mapping[str, str], pairs: Iterable[tuple[str, str]] = PAIRS) -> list[contrast.Check]:
+    """Each pair's contrast in a resolved theme, PAIRS or ``mod_pairs``, in their order, with the text need."""
     return [
         contrast.Check(text, ground, contrast.NEEDS["text"], contrast.ratio(resolved[text], resolved[ground]))
-        for text, ground in PAIRS
+        for text, ground in pairs
     ]
 
 

@@ -75,18 +75,21 @@ the borders (``copper-blue-3``), and its text colour (issue 18, D1,
 ``copper-blue-text``), the neutral's included, so that a mod draws a grey
 badge or chip as it draws a coloured one; then the roles of
 copper_design.herdr's ``MOD_ROLES`` (``copper-bg``), for mods to name by
-role. The main value is a solid fill, not text: on its own step 3 it reaches
-the text need only for light blue. The text colour is the step copper takes
-for text on the colour's steps 3 and 4 (copper_design.herdr's
-``text_step``): step 11, and step 12 where step 11 falls short of the text
-need on them or on the terminal's background, light yellow and orange. A mod
-needs no knowledge of the steps, and a later step change keeps the name. The
-keys carried before the text colours stay as copper v0.3.0 rendered them
+role. The main value is a solid fill, not text: in light mode it reaches the
+text need on its own step 3 only for blue. The text colour is herdr's own pick
+(copper_design.herdr's ``MOD_TEXT_STEP`` and ``MOD_TEXT_STEPS``): step 11,
+low-contrast text (GLOSSARY, Step), which carries more of the hue than step
+12 for a label or chip coloured by hue, and high-contrast text (step 12) for
+the colours where step 11 falls short of the text need on the colour's steps 3
+and 4 or on the terminal's background. The Android port puts step 12 on its
+containers, as Material's on-container text. A mod needs no knowledge of the
+steps, and a later step change keeps the name. The keys carried before the
+text colours stay as copper v0.3.0 rendered them
 (tests/fixtures/herdr-mod-keys-v0.3.0.json). herdr 0.1.17 hands every key of
 ``colors`` to its mods, a name it resolves or not, though its documentation
-names only its own. The port of
-``resolve`` does the same and the tests hold the theme to it; a herdr release
-that changes this shows only once its ``resolve`` is ported with the pin.
+names only its own. The port of ``resolve`` does the same and the tests hold
+the theme to it; a herdr release that changes this shows only once its
+``resolve`` is ported with the pin.
 
 The ANSI colours:
 
@@ -110,7 +113,6 @@ The ANSI colours:
   use bright white as text.
 """
 
-import dataclasses
 import json
 import re
 from pathlib import Path
@@ -133,11 +135,6 @@ _FILL_GREYS = {
 _DARKER_BRIGHT = {
     ("light", 7): "bright white is a grey readable on the background (3:1), darker than the white fill",
 }
-
-# (mode, base colour): the step its ``copper-<hue>-text`` takes where that is
-# not step 11 (issue 18, D1). copper_design.herdr's ``text_step`` derives it;
-# held here so that a palette change that moves the pick shows.
-_TEXT_STEP = {("light", "yellow"): 12, ("light", "orange"): 12}
 
 _ROOT = Path(__file__).resolve().parents[1]
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
@@ -261,7 +258,7 @@ def test_the_theme_carries_coppers_colours_for_mods(mode: palette.Mode) -> None:
                 ("-4", "-4"),
                 ("-6", "-6"),
                 ("-7", "-7"),
-                ("-text", f"-{_TEXT_STEP.get((mode, name), 11)}"),
+                ("-text", f"-{herdr.mod_text_step(mode, name)}"),
             )
         },
         **{f"copper-{role}": c[role] for role in ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")},
@@ -272,21 +269,40 @@ def test_the_theme_carries_coppers_colours_for_mods(mode: palette.Mode) -> None:
 
 @pytest.mark.parametrize("mode", palette.MODES)
 def test_each_text_colour_for_mods_reaches_the_text_need_on_its_tints_and_the_terminal(mode: palette.Mode) -> None:
-    theme = _theme(mode)
-    colors = theme["colors"]
     bases = tokens.load(mode).bases
-    ratios = {
-        f"copper-{base}-text on {ground}": contrast.ratio(colors[f"copper-{base}-text"], colour)
-        for base in bases
-        for ground, colour in (
-            (f"copper-{base}-3", colors[f"copper-{base}-3"]),
-            (f"copper-{base}-4", colors[f"copper-{base}-4"]),
-            ("background", theme["background"]),
+    resolved = herdr.resolve(_theme(mode))
+    checks = herdr.checks(resolved, herdr.mod_pairs(bases))
+    assert [(check.foreground, check.background) for check in checks] == [
+        *((f"copper-{base}-text", f"copper-{base}-{step}") for base in bases for step in (3, 4)),
+        *((f"copper-{base}-text", "background") for base in bases),
+    ]
+    assert {check.need for check in checks} == {contrast.NEEDS["text"]}
+    short = {
+        f"{check.foreground} {resolved[check.foreground]} on {check.background} {resolved[check.background]}": round(
+            check.ratio, 2
         )
+        for check in checks
+        if not check.passes
     }
-    assert len(ratios) == 3 * len(bases)
-    short = {pair: round(ratio, 2) for pair, ratio in ratios.items() if ratio < contrast.NEEDS["text"]}
     assert not short, f"{mode}: below the text need: {short}"
+
+
+@pytest.mark.parametrize("mode", palette.MODES)
+def test_a_text_colour_for_mods_takes_another_step_only_where_step_11_falls_short(mode: palette.Mode) -> None:
+    loaded = tokens.load(mode)
+    c = loaded.colours
+    other = herdr.MOD_TEXT_STEPS[mode]
+    assert set(other) <= set(loaded.bases), f"{mode}: not a base colour: {set(other) - set(loaded.bases)}"
+    terminal = c[herdr.terminal(mode)]
+    stale = [
+        base
+        for base in other
+        if all(
+            contrast.ratio(c[f"{base}-{herdr.MOD_TEXT_STEP}"], ground) >= contrast.NEEDS["text"]
+            for ground in (c[f"{base}-3"], c[f"{base}-4"], terminal)
+        )
+    ]
+    assert not stale, f"{mode}: step {herdr.MOD_TEXT_STEP} reaches the text need here; drop the entry: {stale}"
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
@@ -295,13 +311,6 @@ def test_the_colours_for_mods_of_v0_3_0_are_unchanged(mode: palette.Mode) -> Non
     colors = _theme(mode)["colors"]
     kept = [(key, value) for key, value in colors.items() if key in frozen[mode]]
     assert kept == list(frozen[mode].items())
-
-
-def test_a_base_colour_without_a_text_step_that_reaches_the_text_need_raises() -> None:
-    loaded = tokens.load("light")
-    faint = dict(loaded.colours) | {"blue-11": loaded.colours["blue-3"], "blue-12": loaded.colours["blue-4"]}
-    with pytest.raises(ValueError, match="no step of blue"):
-        herdr.for_mods(dataclasses.replace(loaded, colours=faint))
 
 
 def test_the_port_of_herdrs_resolve_passes_coppers_colours_for_mods_through() -> None:
