@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/danielcopper/copper-design/compare/v0.2.0...v0.3.0) (2026-11-23)
+
+
+### Features
+
+* **herdr:** keep herdr's panel levels apart ([#16](https://github.com/danielcopper/copper-design/issues/16)) ([5b012e1](https://github.com/danielcopper/copper-design/commit/5b012e1fb6e82e27ecbcb5a7000bd13377545d4c)), closes [#15](https://github.com/danielcopper/copper-design/issues/15)
+
 ## [0.2.0](https://github.com/danielcopper/copper-design/compare/v0.1.0...v0.2.0) (2026-11-20)
 
 

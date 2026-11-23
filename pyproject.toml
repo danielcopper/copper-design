@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "copper-design"
-version = "0.2.0"
+version = "0.3.0"
 description = "copper, one design system for several apps: what the apps share as design tokens and artwork, and the generator that renders the tokens for each target."
 readme = "README.md"
 requires-python = ">=3.12"
