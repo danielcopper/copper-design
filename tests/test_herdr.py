@@ -71,12 +71,13 @@ prefixed ``copper-`` so that none collides with a name a later herdr resolves
 (copper_design.herdr's ``for_mods``): each base colour's main value
 (``copper-blue``) and its steps 3 and 4, the tinted backgrounds, and 6 and 7,
 the borders (``copper-blue-3``), the neutral's included, so that a mod draws a
-grey badge or chip as it draws a coloured one; then the roles that reach herdr
-no other way, ``bg``, ``bg-alt``, ``surface-raised``, ``border``,
-``border-strong`` and ``info`` (``copper-bg``). herdr 0.1.17 hands every key of
-``colors`` to its mods, a name it resolves or not, though its documentation
-names only its own; the port of ``resolve`` does the same, so a herdr release
-that changes it shows when the pin moves.
+grey badge or chip as it draws a coloured one; then the background and border
+roles and ``info``, for mods to name by role: ``bg``, ``bg-alt``,
+``surface-raised``, ``border``, ``border-strong`` and ``info``
+(``copper-bg``). herdr 0.1.17 hands every key of ``colors`` to its mods, a name
+it resolves or not, though its documentation names only its own. The port of
+``resolve`` does the same and the tests hold the theme to it; a herdr release
+that changes this shows only once its ``resolve`` is ported with the pin.
 
 The ANSI colours:
 

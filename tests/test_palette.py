@@ -12,9 +12,7 @@ from copper_design import palette, tokens
 
 # The approved palette, all 12 steps of every base colour per mode. It is the
 # prototype's palette it was chosen from, with one deliberate change: light
-# neutral step 10 moved from #726e85 to #6f6b82, then to #6c687f for herdr's
-# panels (issue 12, D3), then to #6b677e for herdr's panel levels (issue 15, D5);
-# parameters.toml says why.
+# neutral step 10 is #6b677e; parameters.toml says why.
 APPROVED: dict[palette.Mode, dict[str, tuple[str, ...]]] = {
     "light": {
         "neutral": (

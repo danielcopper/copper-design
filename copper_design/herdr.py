@@ -11,8 +11,7 @@ herdr derives the colours the theme file leaves out (``hover``, ``ring``,
 preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr v0.1.17's functions of those names in
 ``src/settings.rs``, and ``checks`` measures each pair of ``PAIRS`` on what
 ``resolve`` returns. A herdr release that changes them changes this file with
-the pin. ``resolve`` also hands on the keys of ``colors`` that are none of
-herdr's names, as herdr does for its mods.
+the pin.
 """
 
 import math
@@ -79,14 +78,14 @@ source: the panel levels (``surface``, ``canvas``, ``chrome``, ``popover``, ``ra
 states."""
 
 MOD_PREFIX = "copper-"
-"""The prefix of the keys the theme's ``colors`` carries for herdr's mods, beside the names herdr resolves; herdr
-hands every key of ``colors`` to its mods, and none of herdr's names starts with it."""
+"""The prefix of the keys the theme's ``colors`` carries for herdr's mods, beside the names herdr resolves; none of
+herdr's names starts with it."""
 
 MOD_STEPS = (3, 4, 6, 7)
 """The steps of each base colour carried for mods: the tinted backgrounds (3, 4) and the borders (6, 7)."""
 
 MOD_ROLES = ("bg", "bg-alt", "surface-raised", "border", "border-strong", "info")
-"""The roles carried for mods: those that reach herdr no other way."""
+"""The roles carried for mods: the background and border roles and info, for mods to name by role."""
 
 
 def for_mods(bases: Iterable[str]) -> tuple[tuple[str, str], ...]:
