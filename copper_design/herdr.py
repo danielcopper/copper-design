@@ -90,9 +90,7 @@ MOD_TEXT = "text"
 """The suffix of each base colour's text colour for mods (``copper-blue-text``)."""
 
 MOD_TEXT_STEP = 11
-"""The step a base colour's text colour for mods takes (issue 18, D1): low-contrast text (GLOSSARY, Step), for a
-label or chip coloured by hue, since step 11 carries more of the hue than high-contrast text (12). This is herdr's own
-pick: the Android port puts step 12 on its containers, as Material's on-container text (copper_design.material)."""
+"""The step a base colour's text colour for mods takes (issue 18, D1): low-contrast text (GLOSSARY, Step)."""
 
 MOD_TEXT_STEPS: dict[Mode, dict[str, int]] = {"light": {"yellow": 12, "orange": 12}, "dark": {}}
 """Per mode, the base colours whose text colour for mods takes another step than MOD_TEXT_STEP, with that step:
