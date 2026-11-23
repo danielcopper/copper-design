@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/danielcopper/copper-design/compare/v0.3.0...v0.4.0) (2026-11-23)
+
+
+### Features
+
+* **herdr:** hand mods a text colour per hue ([#19](https://github.com/danielcopper/copper-design/issues/19)) ([150330c](https://github.com/danielcopper/copper-design/commit/150330c26d028932977ca34235a4b941b42affbb)), closes [#18](https://github.com/danielcopper/copper-design/issues/18)
+
 ## [0.3.0](https://github.com/danielcopper/copper-design/compare/v0.2.0...v0.3.0) (2026-11-23)
 
 

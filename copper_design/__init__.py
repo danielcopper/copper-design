@@ -1,6 +1,6 @@
 """copper, one design system for several apps."""
 
 # Written by release-please; tests/test_version.py says how.
-__version__ = "0.3.0"  # x-release-please-version
+__version__ = "0.4.0"  # x-release-please-version
 
 __all__ = ["__version__"]
