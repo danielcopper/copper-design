@@ -13,7 +13,7 @@ The port: the terminal is a pane on the canvas. ANSI order: black, red, green,
 yellow, blue, magenta (violet), cyan (teal), white, then the bright eight.
 
 The panel levels (issue 15, D1, D2 and D5) are neutral steps the port picks
-per mode (copper_design.herdr's ``TERMINAL`` and ``COLORS``), not copper's
+per mode (copper_design.herdr's ``COLORS``), not copper's
 roles, and follow herdr's own build, where the sidebar is part of the frame: in
 dark mode the sidebar (``chrome``) and ``canvas`` (behind cards) share step 1,
 the terminal and ``surface`` (a board's columns) take step 3, cards (``raised``)

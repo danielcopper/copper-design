@@ -23,8 +23,8 @@ def each_mode(pattern: str) -> PerMode:
 ANDROID_VALUES: dict[palette.Mode, str] = {"light": "values", "dark": "values-night"}
 """The Android resource directory of each mode: the system takes values-night in dark mode."""
 
-type ModeExtraContext = Callable[[palette.Mode], dict[str, Any]]
-"""What a template rendered per mode gets beside the mode's context, from the mode."""
+type ModeExtraContext = Callable[[tokens.ModeTokens], dict[str, Any]]
+"""What a template rendered per mode gets beside the mode's context, from the mode's tokens."""
 
 HERDR_TEMPLATE = "herdr.json.j2"
 OUTPUTS: tuple[tuple[PerMode, str, ModeExtraContext | None], ...] = (
@@ -156,8 +156,8 @@ def render_template(env: Environment, template: str, where: str, **values: Any) 
 def render(
     env: Environment, template: str, mode_tokens: tokens.ModeTokens, extra: ModeExtraContext | None = None
 ) -> str:
-    """One template rendered for one mode, with what else it gets from the mode."""
-    values = context(mode_tokens) | (extra(mode_tokens.mode) if extra else {})
+    """One template rendered for one mode, with what else it gets from the mode's tokens."""
+    values = context(mode_tokens) | (extra(mode_tokens) if extra else {})
     return render_template(env, template, mode_tokens.mode, **values)
 
 

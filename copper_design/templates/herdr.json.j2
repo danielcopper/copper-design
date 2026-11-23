@@ -3,8 +3,8 @@
   file follows (what herdr reads, which steps the terminal, the panel levels and
   the ANSI colours take and why, which colours it leaves to herdr, and which it
   carries for herdr's mods), and the tests hold the rendered file to them. The
-  terminal's step, herdr_terminal, is copper_design.herdr's TERMINAL; the colors
-  mapping, herdr_colors, is its COLORS and then its colours for mods.
+  terminal's colour, herdr_terminal, is copper_design.herdr's terminal(); the
+  colors mapping, herdr_colors, is its COLORS and then its colours for mods.
 -#}
 {%- if mode == "light" -%}
 {%- set ansi = [
