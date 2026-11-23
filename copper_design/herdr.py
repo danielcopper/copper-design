@@ -8,7 +8,7 @@ tests/test_herdr.py's docstring says why the table reads as it does.
 
 herdr derives the colours the theme file leaves out (``hover``, ``ring``,
 ``solid_foreground``) from its terminal background, so the tests and the
-preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr v0.1.16's functions of those names in
+preview compute them here: ``is_light``, ``mix`` and ``resolve`` port herdr v0.1.17's functions of those names in
 ``src/settings.rs``, and ``checks`` measures each pair of ``PAIRS`` on what
 ``resolve`` returns. A herdr release that changes them changes this file with
 the pin. ``resolve`` also hands on the keys of ``colors`` that are none of
@@ -23,7 +23,7 @@ from typing import Any
 from copper_design import contrast, tokens
 from copper_design.palette import Mode
 
-HERDR = "0.1.16"
+HERDR = "0.1.17"
 """The herdr version whose ``resolve`` this file ports."""
 
 
@@ -59,7 +59,7 @@ COLORS: dict[Mode, tuple[tuple[str, str], ...]] = {
         canvas="neutral-3",
         chrome="neutral-3",
         popover="neutral-1",
-        raised="neutral-3",
+        raised="violet-3",
         selected="blue-3",
         dim="text-subtle",
     ),
@@ -67,15 +67,16 @@ COLORS: dict[Mode, tuple[tuple[str, str], ...]] = {
         surface="neutral-3",
         canvas="neutral-1",
         chrome="neutral-1",
-        popover="neutral-5",
+        popover="neutral-3",
         raised="neutral-5",
         selected="blue-4",
         dim="neutral-10",
     ),
 }
 """Per mode, the names herdr resolves that the theme's ``colors`` sets, in the file's order, each with its copper
-source: the panel levels (``surface``, ``canvas``, ``chrome``, ``popover``, ``raised``) as neutral steps and the
-selected row as a blue tint, then the borders, the text, the accent and the agent states."""
+source: the panel levels (``surface``, ``canvas``, ``chrome``, ``popover``, ``raised``) as neutral steps, light
+``raised`` a violet tint, and the selected row a blue tint, then the borders, the text, the accent and the agent
+states."""
 
 MOD_PREFIX = "copper-"
 """The prefix of the keys the theme's ``colors`` carries for herdr's mods, beside the names herdr resolves; herdr

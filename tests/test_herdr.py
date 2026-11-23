@@ -1,6 +1,6 @@
 """The herdr port: copper-light.json and copper-dark.json in herdr's theme format.
 
-herdr 0.1.16 reads ``themes/<name>.json``: ``background``, ``foreground``,
+herdr 0.1.17 reads ``themes/<name>.json``: ``background``, ``foreground``,
 ``selection`` and an optional ``cursor`` as ``#rrggbb``, ``ansi`` as 16 of them,
 and an optional ``colors`` that overrides its panel colours by name with
 ``#rrggbb`` or ``#rrggbbaa``. It takes a theme as light by the background's
@@ -12,30 +12,36 @@ are as they are; the template points to it, and copper_design.herdr holds the
 The port: the terminal is a pane on the canvas. ANSI order: black, red, green,
 yellow, blue, magenta (violet), cyan (teal), white, then the bright eight.
 
-The panel levels (issue 15, D1, D2 and D5) are neutral steps the port picks
-per mode (copper_design.herdr's ``COLORS``), not copper's
-roles, and follow herdr's own build, where the sidebar is part of the frame: in
-dark mode the sidebar (``chrome``) and ``canvas`` (behind cards) share step 1,
-the terminal and ``surface`` (a board's columns) take step 3, cards (``raised``)
-and popovers step 5; in light mode the sidebar and ``canvas`` share step 3, the
-terminal and ``surface`` step 1, cards step 3 (they sit on step-1 columns, never
-on ``canvas``), and popovers are white, step 1, set apart from the terminal by
-copper's border. What herdr derives from the terminal background instead leaves
-them 1.04 to 1.07:1 apart, and the window reads as one surface; here every two
-levels herdr draws beside or on each other stand at least 1.12:1 apart by
-luminance, what two neutral steps reach at the dark end, but the pairs meant to
-read as one surface (the sidebar and ``canvas``, and in light mode the terminal
-and a popover).
+The panel levels (issue 15, D1, D2 and D5) are copper steps the port picks per
+mode (copper_design.herdr's ``COLORS``), not copper's roles, and follow herdr's
+own build, where the sidebar is part of the frame: in dark mode the sidebar
+(``chrome``) and ``canvas`` share neutral step 1, the terminal, ``surface`` and
+popovers step 3, and ``raised`` (buttons, chips, the open sub-agent, a hunk
+header) step 5; in light mode the sidebar and ``canvas`` share neutral step 3,
+the terminal, ``surface`` and popovers step 1, and ``raised`` is violet step 3:
+between white and neutral step 3, the last step on which ``dim`` reaches the
+text need, the grey scale holds only two levels 1.12:1 apart, and the terminal,
+the sidebar and ``raised`` need three. What herdr derives from the terminal
+background instead leaves the sidebar and ``canvas`` 1.04 to 1.11:1 from the
+terminal, and the window reads as one surface.
 
 The selected row (``selected``) is an opaque blue tint (D3), as most interfaces
 and Material's ``primaryContainer`` mark a selection: blue step 4 in dark mode,
-step 3 in light mode. From cards, and in light mode from the sidebar, it differs
-mainly in hue (1.02 to 1.05:1 by luminance), so those pairs are measured by
-their distance in OKLab instead, at least 3 (times 100), about what one neutral
-step apart reaches at these levels. ``hover`` stays herdr's translucent layer,
-transient and quiet. ``border`` and ``input`` (the stronger edge of an input)
-are ``border`` and ``border-strong``, which keep copper's hue where herdr's are
-white or black at low alpha.
+step 3 in light mode. ``hover`` stays herdr's translucent layer, transient and
+quiet. ``border`` and ``input`` (the stronger edge of an input) are ``border``
+and ``border-strong``, which keep copper's hue where herdr's are white or black
+at low alpha.
+
+Which levels herdr 0.1.17 draws on or beside each other is read from its source
+(its layouts, its frame and mods, its window's fills). The pairs it sets apart
+by a border are listed, not measured: the pane in its frame and the sidebar
+column on ``canvas``, popovers and menus over the app, key caps on a selected
+row; the sidebar and ``canvas`` share a step, and so do the terminal and a
+popover. The pairs it draws edge to edge, the selected row and ``raised`` each
+on the sidebar, on the terminal and on a popover, stand at least 1.12:1 apart
+by luminance, what two neutral steps reach at the dark end, or, where one side
+is a tint, 3 apart in OKLab (times 100), about what one neutral step apart
+reaches at these levels.
 
 Beside the levels, ``colors`` sets what carries meaning (copper_design.herdr's
 ``COLORS``):
@@ -67,7 +73,7 @@ prefixed ``copper-`` so that none collides with a name a later herdr resolves
 the borders (``copper-blue-3``), the neutral's included, so that a mod draws a
 grey badge or chip as it draws a coloured one; then the roles that reach herdr
 no other way, ``bg``, ``bg-alt``, ``surface-raised``, ``border``,
-``border-strong`` and ``info`` (``copper-bg``). herdr 0.1.16 hands every key of
+``border-strong`` and ``info`` (``copper-bg``). herdr 0.1.17 hands every key of
 ``colors`` to its mods, a name it resolves or not, though its documentation
 names only its own; the port of ``resolve`` does the same, so a herdr release
 that changes it shows when the pin moves.
@@ -119,14 +125,12 @@ _DARKER_BRIGHT = {
 
 _ROOT = Path(__file__).resolve().parents[1]
 _HEX = re.compile(r"^#[0-9a-f]{6}$")
-# What the theme leaves to herdr: ``hover``, a translucent layer, transient and
-# quiet (issue 15, D3), ``ring``, a neutral edge, and ``solid_foreground``, the
-# text on a solid button.
+# What the theme leaves to herdr; the docstring says why.
 _LEFT_TO_HERDR = {"hover", "ring", "solid_foreground"}
 
 # The copper colour of each panel level herdr reads, and of the terminal (the
-# file's ``background``): neutral steps (issue 15, D2 and D5), the selected row
-# a blue tint (D3).
+# file's ``background``): neutral steps, light ``raised`` a violet tint and the
+# selected row a blue tint (issue 15, D2, D3 and D5).
 _LEVELS = {
     "dark": {
         "background": "neutral-3",
@@ -134,7 +138,7 @@ _LEVELS = {
         "chrome": "neutral-1",
         "canvas": "neutral-1",
         "raised": "neutral-5",
-        "popover": "neutral-5",
+        "popover": "neutral-3",
         "selected": "blue-4",
     },
     "light": {
@@ -142,42 +146,42 @@ _LEVELS = {
         "surface": "neutral-1",
         "chrome": "neutral-3",
         "canvas": "neutral-3",
-        "raised": "neutral-3",
+        "raised": "violet-3",
         "popover": "neutral-1",
         "selected": "blue-3",
     },
 }
 
-# The panel levels herdr draws beside or on each other, the terminal being
-# ``background``. Each pair stands at least 1.12:1 apart by luminance (issue 15,
-# D1), but the pairs meant to read as one surface and the pairs that differ
-# mainly in hue, each with why.
-_TOUCHING = (
-    ("chrome", "canvas"),
-    ("canvas", "background"),
-    ("canvas", "surface"),
-    ("surface", "raised"),
-    ("background", "selected"),
-    ("chrome", "selected"),
-    ("raised", "selected"),
-    ("background", "popover"),
-    ("canvas", "popover"),
-)
-_SIDEBAR = "the sidebar is part of the frame, as in herdr's own build (issue 15, D2)"
-_ONE_SURFACE = {
-    ("dark", "chrome", "canvas"): _SIDEBAR,
-    ("light", "chrome", "canvas"): _SIDEBAR,
-    ("light", "background", "popover"): "the light popover is white, set apart by copper's border (issue 15, D5)",
+# The pairs herdr 0.1.17 draws edge to edge, without a border, each with where
+# it draws one (issue 15, D2): the selected row and ``raised`` on the sidebar,
+# on the terminal and on popovers. Each stands at least 1.12:1 apart by
+# luminance, or, where one side is a tint (no neutral step), _HUE_DISTANCE apart
+# in OKLab.
+_EDGE_TO_EDGE = {
+    ("selected", "chrome"): "defaults/mods/tabs/main.js:137, a panel button in the tab row (:144)",
+    ("selected", "background"): "defaults/mods/changes/main.js:218, the open file in the changes panel (:206)",
+    ("selected", "popover"): "defaults/mods/menu/main.js:152, a menu's current item (:129)",
+    ("raised", "chrome"): "defaults/mods/agents/main.js:200, the open sub-agent in the agent list (:425)",
+    ("raised", "background"): "defaults/mods/changes/main.js:196, a hunk header in the changes panel (:206)",
+    ("raised", "popover"): "defaults/mods/confirm/main.js:49, a confirmation's Cancel button (:40)",
 }
-_TINT = "the selected row is a blue tint, apart from a neutral level mainly by hue (issue 15, D3)"
-_BY_HUE = {
-    ("dark", "raised", "selected"): _TINT,
-    ("light", "raised", "selected"): _TINT,
-    ("light", "chrome", "selected"): _TINT,
+# The pairs herdr 0.1.17 sets apart by a border, so not held to a distance.
+_OVERLAY = "src/window.rs:4881, an overlay drawn with a border and a shadow"
+_BORDERED = {
+    (
+        "chrome",
+        "canvas",
+    ): "defaults/layouts/main.json:14-17 and :27, the sidebar column beside a border-coloured divider",
+    ("background", "canvas"): "defaults/layouts/main.json:111-119, the pane in a frame with a border",
+    ("popover", "chrome"): _OVERLAY,
+    ("popover", "background"): _OVERLAY,
+    ("popover", "canvas"): _OVERLAY,
+    ("raised", "selected"): "defaults/frame/palette/main.js:239, a key cap with a border on a selected row (:266)",
 }
 _HUE_DISTANCE = 3.0
-"""The OKLab distance (times 100) a pair of _BY_HUE keeps: about what one neutral step apart reaches at the levels used
-(2.3 to 3.2), so the tint stands apart from a card at least as far as the next neutral step would."""
+"""The OKLab distance (times 100) a pair with a tint keeps (issue 15, D2): about what one neutral step apart reaches
+at the levels used (1.7 to 3.2), so a tint stands apart from its neighbour at least as far as the next neutral step
+would."""
 
 
 def _oklab_distance(a: str, b: str) -> float:
@@ -185,7 +189,7 @@ def _oklab_distance(a: str, b: str) -> float:
     return Color(a).delta_e(b, method="ok") * 100
 
 
-# What herdr v0.1.16 derives from these backgrounds, worked out by hand from its
+# What herdr v0.1.17 derives from these backgrounds, worked out by hand from its
 # src/settings.rs: in dark mode canvas, chrome and solid_foreground are the
 # background 16%, 32% and 28% toward black, popover and raised 6% and 9% toward
 # white; in light mode canvas and chrome are 20% and 60% toward #e8e8e2, raised
@@ -244,9 +248,9 @@ def test_the_theme_carries_coppers_colours_for_mods(mode: palette.Mode) -> None:
 
 
 def test_the_port_of_herdrs_resolve_passes_coppers_colours_for_mods_through() -> None:
-    # herdr 0.1.16 inserts every key of the file's ``colors`` into the theme it
-    # hands to mods (``for (k, v) in overrides { t.insert(k.clone(), v.clone()) }``),
-    # a name it resolves or not.
+    # herdr 0.1.17 inserts every key of the file's ``colors`` into the theme it
+    # hands to mods, a name it resolves or not (src/settings.rs:360,
+    # ``for (k, v) in overrides { t.insert(k.clone(), v.clone()) }``).
     colors = {"copper-orange": "#ff8800", "copper-blue-3": "#112233", "accent": "#445566"}
     theme = {
         "background": "#191724",
@@ -313,27 +317,27 @@ def test_the_borders_take_coppers_border_roles(mode: palette.Mode) -> None:
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
-def test_the_panel_levels_that_touch_stand_apart(mode: palette.Mode) -> None:
+def test_the_levels_herdr_draws_edge_to_edge_stand_apart(mode: palette.Mode) -> None:
     resolved = herdr.resolve(_theme(mode))
-    named = {(a, b) for named_mode, a, b in (*_ONE_SURFACE, *_BY_HUE) if named_mode == mode}
-    assert named <= set(_TOUCHING), named - set(_TOUCHING)
-    by_luminance = {(a, b): contrast.ratio(resolved[a], resolved[b]) for a, b in _TOUCHING}
-    close = {
-        f"{a} {resolved[a]} | {b} {resolved[b]}": round(ratio, 3)
-        for (a, b), ratio in by_luminance.items()
-        if ratio < 1.12 and (mode, a, b) not in _ONE_SURFACE and (mode, a, b) not in _BY_HUE
-    }
-    assert not close, f"{mode}: below 1.12:1: {close}"
-    apart = [(a, b) for (one_mode, a, b) in _ONE_SURFACE if one_mode == mode and resolved[a] != resolved[b]]
-    assert not apart, f"{mode}: meant to read as one surface, but not equal: {apart}"
-    near = {
-        f"{a} {resolved[a]} | {b} {resolved[b]}": round(_oklab_distance(resolved[a], resolved[b]), 2)
-        for (hue_mode, a, b) in _BY_HUE
-        if hue_mode == mode and _oklab_distance(resolved[a], resolved[b]) < _HUE_DISTANCE
-    }
-    assert not near, f"{mode}: below an OKLab distance of {_HUE_DISTANCE}: {near}"
-    stale = [(a, b) for (hue_mode, a, b) in _BY_HUE if hue_mode == mode and by_luminance[a, b] >= 1.12]
-    assert not stale, f"{mode}: these reach 1.12:1 by luminance now; measure them so: {stale}"
+
+    def tint(level: str) -> bool:
+        return not _LEVELS[mode][level].startswith(f"{palette.NEUTRAL}-")
+
+    close = {}
+    for a, b in _EDGE_TO_EDGE:
+        if tint(a) or tint(b):
+            measure, need = _oklab_distance(resolved[a], resolved[b]), _HUE_DISTANCE
+        else:
+            measure, need = contrast.ratio(resolved[a], resolved[b]), 1.12
+        if measure < need:
+            close[f"{a} {resolved[a]} | {b} {resolved[b]}"] = f"{measure:.3f} < {need}"
+    assert not close, f"{mode}: too close: {close}"
+
+
+def test_the_bordered_pairs_are_listed_apart_from_the_measured_ones() -> None:
+    levels = set(_LEVELS["dark"])
+    assert not set(_BORDERED) & set(_EDGE_TO_EDGE), set(_BORDERED) & set(_EDGE_TO_EDGE)
+    assert {level for pair in (*_BORDERED, *_EDGE_TO_EDGE) for level in pair} <= levels
 
 
 @pytest.mark.parametrize("mode", palette.MODES)
