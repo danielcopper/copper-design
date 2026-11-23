@@ -12,7 +12,7 @@
     <color name="copper_neutral_7">#FFC6BEC5</color>
     <color name="copper_neutral_8">#FFAFACB8</color>
     <color name="copper_neutral_9">#FF918C9E</color>
-    <color name="copper_neutral_10">#FF6C687F</color>
+    <color name="copper_neutral_10">#FF6B677E</color>
     <color name="copper_neutral_11">#FF635F7C</color>
     <color name="copper_neutral_12">#FF464261</color>
     <!-- blue: its main value (step 9) and its steps 1-12 -->
@@ -119,10 +119,10 @@
     <color name="copper_surface">#FFFFFAF3</color>
     <color name="copper_surface_raised">#FFF2E9E1</color>
     <color name="copper_border">#FFC6BEC5</color>
-    <color name="copper_border_strong">#FF6C687F</color>
+    <color name="copper_border_strong">#FF6B677E</color>
     <color name="copper_text">#FF464261</color>
     <color name="copper_text_muted">#FF635F7C</color>
-    <color name="copper_text_subtle">#FF6C687F</color>
+    <color name="copper_text_subtle">#FF6B677E</color>
     <color name="copper_accent">#FF1C689E</color>
     <color name="copper_on_accent">#FFFFFAF3</color>
     <color name="copper_selection">#FFE3D9D0</color>

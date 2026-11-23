@@ -99,7 +99,7 @@
   <h2>herdr theme</h2>
   {%- set h = m.herdr %}
   {%- set hp = m.herdr_panels %}
-  <p class="note" style="color: {{ c['text-muted'] }}">The panels as herdr {{ hp.version }} resolves the theme: the terminal on the chrome, then each opaque surface herdr derives from the background with the panel text on it and a solid button with its text, each with its contrast and need, then every colour with what sets it.</p>
+  <p class="note" style="color: {{ c['text-muted'] }}">The panels as herdr {{ hp.version }} resolves the theme: the terminal on the chrome, then each opaque panel level, the selected row's included, with the panel text on it and a solid button with its text, each with its contrast and need, then every colour with what sets it.</p>
   <div style="background: {{ hp.resolved.chrome }}; padding: 10px; border-radius: 12px">
   <div class="term" style="background: {{ h.background }}; color: {{ h.foreground }}; border: 1px solid {{ hp.resolved.border }}">
     <div>$ ls --color <span style="background: {{ h.selection }}">selected</span><span style="background: {{ h.cursor }}">&nbsp;</span></div>
